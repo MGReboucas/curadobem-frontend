@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String usuario;
+  final String? usuario;
 
-  const HomeScreen({super.key, required this.usuario});
+  const HomeScreen({super.key, this.usuario});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Header
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

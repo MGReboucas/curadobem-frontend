@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
-import 'cadastro_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -48,9 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (login == _usuarioValido && senha == _senhaValida) {
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => HomeScreen(usuario: login)),
-      );
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
     } else {
       setState(() {
         erroMensagem = 'Usuário ou senha inválidos.';
@@ -65,30 +61,55 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Header
             Container(
-              height: 145,
               color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Image.asset("assets/images/logo.png", height: 85),
-
-                  TextButton(
+                  TextButton.icon(
                     onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const CadastroScreen(),
-                        ),
-                      );
+                      Navigator.of(
+                        context,
+                      ).pushNamedAndRemoveUntil('/', (_) => false);
                     },
-                    child: Text(
-                      "Não tem conta?",
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: verde,
+                      size: 14,
+                    ),
+                    label: Text(
+                      'Voltar à loja',
                       style: TextStyle(
                         color: verde,
-                        fontSize: 18,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                        decorationColor: verde,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamed('/cadastro');
+                    },
+                    child: Text(
+                      'Não tem conta?',
+                      style: TextStyle(
+                        color: verde,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         decoration: TextDecoration.underline,
+                        decorationColor: verde,
                       ),
                     ),
                   ),
@@ -97,12 +118,20 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
 
             Expanded(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const SizedBox(height: 32),
+
+                    // Logo centralizada
+                    Center(
+                      child: Image.asset('assets/images/logo.png', height: 100),
+                    ),
+
+                    const SizedBox(height: 32),
+
                     Text(
                       "PÁGINA DE LOGIN",
                       style: TextStyle(

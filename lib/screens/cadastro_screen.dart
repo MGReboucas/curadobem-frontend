@@ -29,7 +29,8 @@ class _CadastroScreenState extends State<CadastroScreen> {
 
     if (!aceitaTermos || !aceitaPrivacidade) {
       setState(() {
-        erroMensagem = 'Você deve aceitar os termos e a política de privacidade.';
+        erroMensagem =
+            'Você deve aceitar os termos e a política de privacidade.';
       });
       return;
     }
@@ -47,12 +48,12 @@ class _CadastroScreenState extends State<CadastroScreen> {
     });
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Conta criada com sucesso!')),
-    );
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Conta criada com sucesso!')));
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   @override
@@ -73,24 +74,50 @@ class _CadastroScreenState extends State<CadastroScreen> {
           children: [
             // Header
             Container(
-              height: 145,
               color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Image.asset("assets/images/logo.png", height: 85),
-                  TextButton(
+                  TextButton.icon(
                     onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      );
+                      Navigator.of(
+                        context,
+                      ).pushNamedAndRemoveUntil('/', (_) => false);
                     },
-                    child: Text(
-                      "Já possui conta?",
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: verde,
+                      size: 14,
+                    ),
+                    label: Text(
+                      'Voltar à loja',
                       style: TextStyle(
                         color: verde,
-                        fontSize: 18,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                        decorationColor: verde,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamed('/login');
+                    },
+                    child: Text(
+                      'Já possui conta?',
+                      style: TextStyle(
+                        color: verde,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         decoration: TextDecoration.underline,
                         decorationColor: verde,
@@ -104,12 +131,24 @@ class _CadastroScreenState extends State<CadastroScreen> {
             // Form
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 24,
+                ),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Logo centralizada
+                      Center(
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          height: 90,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
                       Text(
                         "PAGINA DE CADASTRO",
                         style: TextStyle(
@@ -121,25 +160,33 @@ class _CadastroScreenState extends State<CadastroScreen> {
                       const SizedBox(height: 24),
 
                       // Usuario
-                      Text("Usuario:", style: TextStyle(color: verde, fontSize: 16)),
+                      Text(
+                        "Usuario:",
+                        style: TextStyle(color: verde, fontSize: 16),
+                      ),
                       const SizedBox(height: 6),
                       _buildTextField(
                         controller: usuarioController,
                         hint: "Digite seu usuario",
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Informe o usuário' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Informe o usuário'
+                            : null,
                       ),
                       const SizedBox(height: 16),
 
                       // E-mail
-                      Text("E-mail:", style: TextStyle(color: verde, fontSize: 16)),
+                      Text(
+                        "E-mail:",
+                        style: TextStyle(color: verde, fontSize: 16),
+                      ),
                       const SizedBox(height: 6),
                       _buildTextField(
                         controller: emailController,
                         hint: "Digite seu e-mail",
                         keyboardType: TextInputType.emailAddress,
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Informe o e-mail';
+                          if (v == null || v.trim().isEmpty)
+                            return 'Informe o e-mail';
                           if (!v.contains('@')) return 'E-mail inválido';
                           return null;
                         },
@@ -147,19 +194,26 @@ class _CadastroScreenState extends State<CadastroScreen> {
                       const SizedBox(height: 16),
 
                       // Senha
-                      Text("Senha:", style: TextStyle(color: verde, fontSize: 16)),
+                      Text(
+                        "Senha:",
+                        style: TextStyle(color: verde, fontSize: 16),
+                      ),
                       const SizedBox(height: 6),
                       _buildTextField(
                         controller: senhaController,
                         hint: "Digite sua senha",
                         obscureText: true,
-                        validator: (v) =>
-                            (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+                        validator: (v) => (v == null || v.length < 6)
+                            ? 'Mínimo 6 caracteres'
+                            : null,
                       ),
                       const SizedBox(height: 16),
 
                       // Confirme a senha
-                      Text("Confirme a senha:", style: TextStyle(color: verde, fontSize: 16)),
+                      Text(
+                        "Confirme a senha:",
+                        style: TextStyle(color: verde, fontSize: 16),
+                      ),
                       const SizedBox(height: 6),
                       _buildTextField(
                         controller: confirmaSenhaController,
@@ -167,7 +221,8 @@ class _CadastroScreenState extends State<CadastroScreen> {
                         obscureText: true,
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Confirme a senha';
-                          if (v != senhaController.text) return 'As senhas não coincidem';
+                          if (v != senhaController.text)
+                            return 'As senhas não coincidem';
                           return null;
                         },
                       ),
@@ -176,7 +231,8 @@ class _CadastroScreenState extends State<CadastroScreen> {
                       // Checkboxes
                       _buildCheckboxRow(
                         value: aceitaTermos,
-                        onChanged: (v) => setState(() => aceitaTermos = v ?? false),
+                        onChanged: (v) =>
+                            setState(() => aceitaTermos = v ?? false),
                         normalText: "Li e concordo com a ",
                         linkText: "Termo de condições",
                         onLinkTap: () {},
@@ -184,7 +240,8 @@ class _CadastroScreenState extends State<CadastroScreen> {
                       const SizedBox(height: 8),
                       _buildCheckboxRow(
                         value: aceitaPrivacidade,
-                        onChanged: (v) => setState(() => aceitaPrivacidade = v ?? false),
+                        onChanged: (v) =>
+                            setState(() => aceitaPrivacidade = v ?? false),
                         normalText: "Li e concordo com a ",
                         linkText: "politica de privacidade",
                         onLinkTap: () {},
@@ -194,7 +251,10 @@ class _CadastroScreenState extends State<CadastroScreen> {
                         const SizedBox(height: 12),
                         Text(
                           erroMensagem!,
-                          style: const TextStyle(color: Colors.red, fontSize: 14),
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
 
@@ -213,7 +273,9 @@ class _CadastroScreenState extends State<CadastroScreen> {
                             ),
                           ),
                           child: carregando
-                              ? const CircularProgressIndicator(color: Colors.white)
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
                               : const Text(
                                   "Criar conta",
                                   style: TextStyle(
@@ -255,7 +317,10 @@ class _CadastroScreenState extends State<CadastroScreen> {
         hintStyle: TextStyle(color: Colors.grey.shade500),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 14,
+          horizontal: 20,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide.none,
