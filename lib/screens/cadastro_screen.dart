@@ -75,7 +75,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
             // Header
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -147,7 +147,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
                           height: 90,
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 40),
 
                       Text(
                         "PAGINA DE CADASTRO",

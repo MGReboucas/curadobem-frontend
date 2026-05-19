@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class ProdutoScreen extends StatefulWidget {
   final Map<String, String> produto;
@@ -17,6 +18,42 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
   int _quantidade = 1;
 
   final List<String> _tamanhos = ['P', 'M', 'G', 'GG'];
+
+  final TextEditingController _cepController = TextEditingController();
+  bool _calculandoFrete = false;
+  List<Map<String, String>> _opcoesEntrega = [];
+  String? _erroFrete;
+
+  @override
+  void dispose() {
+    _cepController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _calcularFrete() async {
+    final cep = _cepController.text.replaceAll('-', '').trim();
+    if (cep.length != 8) {
+      setState(() {
+        _erroFrete = 'CEP inválido. Informe os 8 dígitos.';
+        _opcoesEntrega = [];
+      });
+      return;
+    }
+    setState(() {
+      _calculandoFrete = true;
+      _erroFrete = null;
+      _opcoesEntrega = [];
+    });
+    // Simulação de chamada à API de frete
+    await Future.delayed(const Duration(seconds: 1));
+    setState(() {
+      _calculandoFrete = false;
+      _opcoesEntrega = [
+        {'nome': 'PAC', 'prazo': '7 a 10 dias úteis', 'valor': 'R\$ 14,90'},
+        {'nome': 'SEDEX', 'prazo': '2 a 4 dias úteis', 'valor': 'R\$ 28,50'},
+      ];
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +268,164 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                               ),
                             ],
                           ),
+
+                          const SizedBox(height: 24),
+
+                          const Divider(height: 1, color: Color(0xFFDDD8CC)),
+
+                          const SizedBox(height: 20),
+
+                          // Calcular Frete
+                          const Text(
+                            'Calcular Frete:',
+                            style: TextStyle(
+                              color: verde,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: const Color(0xFFDDD8CC),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    controller: _cepController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(8),
+                                    ],
+                                    decoration: const InputDecoration(
+                                      hintText: 'Digite seu CEP',
+                                      hintStyle: TextStyle(
+                                        color: Colors.black38,
+                                        fontSize: 14,
+                                      ),
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: _calculandoFrete
+                                      ? null
+                                      : _calcularFrete,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: verde,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
+                                  ),
+                                  child: _calculandoFrete
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text(
+                                          'Calcular',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          if (_erroFrete != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              _erroFrete!,
+                              style: const TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+
+                          if (_opcoesEntrega.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            ..._opcoesEntrega.map(
+                              (op) => Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFFDDD8CC),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          op['nome']!,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          op['prazo']!,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black45,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      op['valor']!,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 16,
+                                        color: verde,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
 
                           const SizedBox(height: 30),
 

@@ -64,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
             // Header
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 26),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -123,14 +123,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 48),
 
                     // Logo centralizada
                     Center(
                       child: Image.asset('assets/images/logo.png', height: 100),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 48),
 
                     Text(
                       "PÁGINA DE LOGIN",
