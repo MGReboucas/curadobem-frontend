@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'produto_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? usuario;
@@ -15,6 +16,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final TextEditingController _searchController = TextEditingController();
   bool _filtrosAberto = false;
+  String? _categoriaSelecionada;
+
+  final List<String> _categorias = [
+    'Blusas',
+    'Vestidos',
+    'Calças',
+    'Oculos',
+    'Bijuteria',
+  ];
 
   final List<Map<String, String>> _novosProdutos = [
     {'nome': 'Blusa feminina azul com...', 'preco': 'R\$ 99,90'},
@@ -125,14 +135,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ? Icons.keyboard_arrow_up
                                 : Icons.keyboard_arrow_down,
                             color: verde,
-                            size: 20,
+                            size: 18,
                           ),
-                          const Text(
-                            ' Filtros',
-                            style: TextStyle(
+                          const SizedBox(width: 4),
+                          Text(
+                            _filtrosAberto ? 'Fechar Filtro' : 'Filtros',
+                            style: const TextStyle(
                               color: verde,
                               fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -141,20 +152,58 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     if (_filtrosAberto) ...[
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: ['Tamanho', 'Cor', 'Preço', 'Marca']
-                            .map(
-                              (f) => FilterChip(
-                                label: Text(f),
-                                selected: false,
-                                onSelected: (_) {},
-                                backgroundColor: Colors.white,
-                                selectedColor: verde.withOpacity(0.2),
-                                labelStyle: const TextStyle(color: verde),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.07),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Escolha a categoria',
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: 13,
                               ),
-                            )
-                            .toList(),
+                            ),
+                            const SizedBox(height: 10),
+                            ..._categorias.map(
+                              (cat) => GestureDetector(
+                                onTap: () => setState(
+                                  () => _categoriaSelecionada =
+                                      _categoriaSelecionada == cat ? null : cat,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 5,
+                                  ),
+                                  child: Text(
+                                    cat,
+                                    style: TextStyle(
+                                      color: verde,
+                                      fontSize: 16,
+                                      fontWeight: _categoriaSelecionada == cat
+                                          ? FontWeight.w800
+                                          : FontWeight.w500,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: verde,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
 
@@ -207,82 +256,86 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: produtos.length,
       itemBuilder: (context, index) {
         final p = produtos[index];
-        return _CardProduto(nome: p['nome']!, preco: p['preco']!);
+        return _CardProduto(produto: p);
       },
     );
   }
 }
 
 class _CardProduto extends StatelessWidget {
-  final String nome;
-  final String preco;
+  final Map<String, String> produto;
 
-  const _CardProduto({required this.nome, required this.preco});
+  const _CardProduto({required this.produto});
 
   static const Color verde = Color(0xFF627348);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.07),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ProdutoScreen(produto: produto)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Imagem do produto (placeholder)
-          Expanded(
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              child: Container(
-                width: double.infinity,
-                color: const Color(0xFFEEEEEE),
-                child: const Center(
-                  child: Icon(
-                    Icons.image_outlined,
-                    color: Color(0xFFBBBBBB),
-                    size: 48,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Imagem do produto (placeholder)
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                child: Container(
+                  width: double.infinity,
+                  color: const Color(0xFFEEEEEE),
+                  child: const Center(
+                    child: Icon(
+                      Icons.image_outlined,
+                      color: Color(0xFFBBBBBB),
+                      size: 48,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
 
-          // Nome e preço
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  nome,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, color: Colors.black87),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  preco,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: verde,
+            // Nome e preço
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    produto['nome'] ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    produto['preco'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: verde,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
