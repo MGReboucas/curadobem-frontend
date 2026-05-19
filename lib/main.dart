@@ -4,6 +4,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/cadastro_screen.dart';
 import 'screens/carrinho_screen.dart';
+import 'screens/checkout_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
         '/login': (_) => const LoginScreen(),
         '/cadastro': (_) => const CadastroScreen(),
         '/carrinho': (_) => const CarrinhoScreen(),
+        '/checkout': (_) => const CheckoutScreen(),
       },
     );
   }
