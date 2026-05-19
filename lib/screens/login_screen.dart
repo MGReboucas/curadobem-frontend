@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'home_screen.dart';
+import 'cadastro_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,24 +14,48 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController senhaController = TextEditingController();
 
   bool carregando = false;
+  String? erroMensagem;
 
   final Color verde = const Color(0xFF627348);
   final Color bege = const Color(0xFFF3EBD6);
 
+  static const String _usuarioValido = 'admin';
+  static const String _senhaValida = 'admin123';
+
   void entrar() async {
+    final login = loginController.text.trim();
+    final senha = senhaController.text;
+
+    // Validação de campos vazios
+    if (login.isEmpty || senha.isEmpty) {
+      setState(() {
+        erroMensagem = 'Preencha o usuário e a senha.';
+      });
+      return;
+    }
+
     setState(() {
       carregando = true;
+      erroMensagem = null;
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    // Simula chamada de autenticação
+    await Future.delayed(const Duration(seconds: 1));
 
     setState(() {
       carregando = false;
     });
 
-    // Aqui depois você coloca sua navegação ou API
-    print("Login: ${loginController.text}");
-    print("Senha: ${senhaController.text}");
+    if (login == _usuarioValido && senha == _senhaValida) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => HomeScreen(usuario: login)),
+      );
+    } else {
+      setState(() {
+        erroMensagem = 'Usuário ou senha inválidos.';
+      });
+    }
   }
 
   @override
@@ -50,7 +76,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   TextButton(
                     onPressed: () {
-                      // ir para cadastro
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const CadastroScreen(),
+                        ),
+                      );
                     },
                     child: Text(
                       "Não tem conta?",
@@ -163,6 +193,30 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
+
+                    if (erroMensagem != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red.shade300),
+                        ),
+                        child: Text(
+                          erroMensagem!,
+                          style: TextStyle(
+                            color: Colors.red.shade700,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 
