@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/carrinho_item.dart';
+import '../services/carrinho_service.dart';
+import 'carrinho_screen.dart';
 
 class ProdutoScreen extends StatefulWidget {
   final Map<String, String> produto;
@@ -434,7 +437,35 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                             width: double.infinity,
                             height: 54,
                             child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                CarrinhoService.instancia.adicionar(
+                                  CarrinhoItem(
+                                    produto: produto,
+                                    tamanho: _tamanhoSelecionado,
+                                    quantidade: _quantidade,
+                                  ),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text(
+                                      'Produto adicionado ao carrinho!',
+                                    ),
+                                    duration: const Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.floating,
+                                    action: SnackBarAction(
+                                      label: 'Ver carrinho',
+                                      textColor: Colors.white,
+                                      onPressed: () =>
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const CarrinhoScreen(),
+                                            ),
+                                          ),
+                                    ),
+                                  ),
+                                );
+                              },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: verde,
                                 shape: RoundedRectangleBorder(

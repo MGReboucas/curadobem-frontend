@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/carrinho_item.dart';
+import '../services/carrinho_service.dart';
+import 'carrinho_screen.dart';
 import 'produto_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -61,22 +64,76 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Image.asset('assets/images/logo.png', height: 62),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(
-                        context,
-                      ).pushNamedAndRemoveUntil('/login', (_) => false);
-                    },
-                    child: const Text(
-                      'Entrar/cadastrar',
-                      style: TextStyle(
-                        color: verde,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
-                        decorationColor: verde,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ValueListenableBuilder(
+                        valueListenable: CarrinhoService.instancia.itens,
+                        builder: (context, itens, _) {
+                          final total = itens.fold<int>(
+                            0,
+                            (s, i) => s + i.quantidade,
+                          );
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              IconButton(
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const CarrinhoScreen(),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.shopping_bag_outlined,
+                                  color: verde,
+                                  size: 26,
+                                ),
+                              ),
+                              if (total > 0)
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Container(
+                                    width: 16,
+                                    height: 16,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.redAccent,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '$total',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
                       ),
-                    ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(
+                            context,
+                          ).pushNamedAndRemoveUntil('/login', (_) => false);
+                        },
+                        child: const Text(
+                          'Entrar/cadastrar',
+                          style: TextStyle(
+                            color: verde,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                            decorationColor: verde,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -336,7 +393,18 @@ class _CardProduto extends StatelessWidget {
                     width: double.infinity,
                     height: 34,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        CarrinhoService.instancia.adicionar(
+                          CarrinhoItem(produto: produto),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Produto adicionado ao carrinho!'),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: verde,
                         shape: RoundedRectangleBorder(
