@@ -67,6 +67,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      IconButton(
+                        onPressed: () =>
+                            Navigator.of(context).pushNamed('/menu'),
+                        icon: const Icon(
+                          Icons.person_outline,
+                          color: verde,
+                          size: 26,
+                        ),
+                      ),
                       ValueListenableBuilder(
                         valueListenable: CarrinhoService.instancia.itens,
                         builder: (context, itens, _) {
