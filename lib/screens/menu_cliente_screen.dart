@@ -1,15 +1,53 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 import 'meus_dados_screen.dart';
 import 'meus_pedidos_screen.dart';
 import 'meus_enderecos_screen.dart';
 import 'duvidas_screen.dart';
 import 'cupons_screen.dart';
 
-class MenuClienteScreen extends StatelessWidget {
+class MenuClienteScreen extends StatefulWidget {
   const MenuClienteScreen({super.key});
 
+  @override
+  State<MenuClienteScreen> createState() => _MenuClienteScreenState();
+}
+
+class _MenuClienteScreenState extends State<MenuClienteScreen> {
   static const Color verde = Color(0xFF627348);
   static const Color bege = Color(0xFFF3EBD6);
+
+  String _nome = '';
+  String _email = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarPerfil();
+  }
+
+  Future<void> _carregarPerfil() async {
+    final response = await ApiService.get('/usuario/perfil');
+    if (!mounted) return;
+    if (response.statusCode == 200) {
+      final raw = jsonDecode(response.body);
+      final data =
+          (raw is Map<String, dynamic> &&
+              raw.containsKey('usuario') &&
+              raw['usuario'] is Map<String, dynamic>)
+          ? raw['usuario'] as Map<String, dynamic>
+          : raw as Map<String, dynamic>;
+      setState(() {
+        _nome =
+            data['nome_completo']?.toString()?.trim() ??
+            data['nome']?.toString()?.trim() ??
+            data['username']?.toString()?.trim() ??
+            '';
+        _email = data['email']?.toString()?.trim() ?? '';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,12 +115,12 @@ class MenuClienteScreen extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const CircleAvatar(
+                          CircleAvatar(
                             radius: 32,
-                            backgroundColor: Color(0xFFE8F0E0),
+                            backgroundColor: const Color(0xFFE8F0E0),
                             child: Text(
-                              'U',
-                              style: TextStyle(
+                              _nome.isNotEmpty ? _nome[0].toUpperCase() : 'U',
+                              style: const TextStyle(
                                 color: verde,
                                 fontSize: 24,
                                 fontWeight: FontWeight.w700,
@@ -90,21 +128,23 @@ class MenuClienteScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Usuário',
-                                style: TextStyle(
+                                _nome.isNotEmpty ? _nome : 'Usuário',
+                                style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.black87,
                                 ),
                               ),
-                              SizedBox(height: 2),
+                              const SizedBox(height: 2),
                               Text(
-                                'usuario@email.com',
-                                style: TextStyle(
+                                _email.isNotEmpty
+                                    ? _email
+                                    : 'usuario@email.com',
+                                style: const TextStyle(
                                   fontSize: 13,
                                   color: Colors.black45,
                                 ),
@@ -180,9 +220,14 @@ class MenuClienteScreen extends StatelessWidget {
                       width: double.infinity,
                       height: 50,
                       child: OutlinedButton.icon(
-                        onPressed: () => Navigator.of(
-                          context,
-                        ).pushNamedAndRemoveUntil('/login', (_) => false),
+                        onPressed: () async {
+                          await ApiService.clearToken();
+                          await ApiService.clearNome();
+                          if (!context.mounted) return;
+                          Navigator.of(
+                            context,
+                          ).pushNamedAndRemoveUntil('/', (_) => false);
+                        },
                         icon: const Icon(Icons.logout, color: Colors.redAccent),
                         label: const Text(
                           'Sair da conta',

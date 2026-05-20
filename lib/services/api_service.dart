@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
   static const String _tokenKey = 'auth_token';
+  static const String _nomeKey = 'user_nome';
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -19,6 +20,21 @@ class ApiService {
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+  }
+
+  static Future<String?> getNome() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_nomeKey);
+  }
+
+  static Future<void> saveNome(String nome) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_nomeKey, nome);
+  }
+
+  static Future<void> clearNome() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_nomeKey);
   }
 
   static Future<Map<String, String>> _headers({bool auth = true}) async {

@@ -21,6 +21,7 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
 
   String? _tamanhoSelecionado;
   int _quantidade = 1;
+  String? _nomeUsuario;
 
   final List<String> _tamanhos = ['P', 'M', 'G', 'GG'];
 
@@ -28,6 +29,20 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
   bool _calculandoFrete = false;
   List<Map<String, String>> _opcoesEntrega = [];
   String? _erroFrete;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarUsuario();
+  }
+
+  Future<void> _carregarUsuario() async {
+    final nome = await ApiService.getNome();
+    if (!mounted) return;
+    if (nome != null && nome.isNotEmpty) {
+      setState(() => _nomeUsuario = nome);
+    }
+  }
 
   @override
   void dispose() {
@@ -138,23 +153,172 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                   // Logo centralizada
                   Image.asset('assets/images/logo.png', height: 62),
 
-                  // Entrar/cadastrar
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(
-                        context,
-                      ).pushNamedAndRemoveUntil('/login', (_) => false);
-                    },
-                    child: const Text(
-                      'Entrar/cadastrar',
-                      style: TextStyle(
-                        color: verde,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
-                        decorationColor: verde,
+                  // Usuário + Carrinho
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          if (_nomeUsuario != null) {
+                            Navigator.of(context).pushNamed('/menu');
+                          } else {
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                title: const Text(
+                                  'Acesse sua conta',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                content: const Text(
+                                  'Faça login ou cadastre-se para acessar seu perfil.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                                actionsAlignment: MainAxisAlignment.center,
+                                actionsPadding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  16,
+                                ),
+                                actions: [
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                        Navigator.of(
+                                          context,
+                                        ).pushNamedAndRemoveUntil(
+                                          '/login',
+                                          (_) => false,
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: verde,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text('Fazer login'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                        Navigator.of(
+                                          context,
+                                        ).pushNamedAndRemoveUntil(
+                                          '/cadastro',
+                                          (_) => false,
+                                        );
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: verde,
+                                        side: const BorderSide(color: verde),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text('Cadastrar'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_nomeUsuario != null) ...[
+                                Text(
+                                  'Olá, ${_nomeUsuario!.split(' ').first}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: verde,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              const Icon(
+                                Icons.person_outline,
+                                color: verde,
+                                size: 26,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                      ValueListenableBuilder(
+                        valueListenable: CarrinhoService.instancia.itens,
+                        builder: (context, itens, _) {
+                          final total = itens.fold<int>(
+                            0,
+                            (s, i) => s + i.quantidade,
+                          );
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              IconButton(
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const CarrinhoScreen(),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.shopping_bag_outlined,
+                                  color: verde,
+                                  size: 26,
+                                ),
+                              ),
+                              if (total > 0)
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Container(
+                                    width: 16,
+                                    height: 16,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.redAccent,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '$total',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),

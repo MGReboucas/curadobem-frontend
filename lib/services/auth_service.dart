@@ -13,6 +13,17 @@ class AuthService {
       if (response.statusCode == 200) {
         final token = data['access_token'] as String;
         await ApiService.saveToken(token);
+        // Salva o nome para exibição no header
+        final usuario = data['usuario'];
+        String nome = login; // fallback: o próprio login digitado
+        if (usuario is Map<String, dynamic>) {
+          nome =
+              usuario['nome_completo']?.toString()?.trim() ??
+              usuario['nome']?.toString()?.trim() ??
+              usuario['username']?.toString()?.trim() ??
+              login;
+        }
+        if (nome.isNotEmpty) await ApiService.saveNome(nome);
         return {'sucesso': true, 'dados': data, 'usuario': data['usuario']};
       }
       final mensagem = data['detail'] is String

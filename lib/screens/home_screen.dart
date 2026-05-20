@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/carrinho_item.dart';
+import '../services/api_service.dart';
 import '../services/carrinho_service.dart';
 import '../services/produto_service.dart';
 import 'carrinho_screen.dart';
@@ -22,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _filtrosAberto = false;
   String? _categoriaSelecionada;
   bool _carregando = true;
+  String? _nomeUsuario;
 
   List<String> _categorias = [];
 
@@ -31,8 +34,40 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _carregarUsuario();
     _carregarCategorias();
     _carregarProdutos();
+  }
+
+  Future<void> _carregarUsuario() async {
+    // Lê o nome salvo no login (resposta imediata)
+    final nomeSalvo = await ApiService.getNome();
+    if (!mounted) return;
+    if (nomeSalvo != null && nomeSalvo.isNotEmpty) {
+      setState(() => _nomeUsuario = nomeSalvo);
+      return;
+    }
+    // Fallback: busca da API (caso não tenha no cache)
+    final response = await ApiService.get('/usuario/perfil');
+    if (!mounted) return;
+    if (response.statusCode == 200) {
+      final raw = jsonDecode(response.body);
+      final data =
+          (raw is Map<String, dynamic> &&
+              raw.containsKey('usuario') &&
+              raw['usuario'] is Map<String, dynamic>)
+          ? raw['usuario'] as Map<String, dynamic>
+          : raw as Map<String, dynamic>;
+      final nome =
+          data['nome_completo']?.toString()?.trim() ??
+          data['nome']?.toString()?.trim() ??
+          data['username']?.toString()?.trim() ??
+          data['email']?.toString()?.trim();
+      if (nome != null && nome.isNotEmpty) {
+        await ApiService.saveNome(nome);
+        setState(() => _nomeUsuario = nome);
+      }
+    }
   }
 
   Future<void> _carregarCategorias() async {
@@ -104,13 +139,116 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        onPressed: () =>
-                            Navigator.of(context).pushNamed('/menu'),
-                        icon: const Icon(
-                          Icons.person_outline,
-                          color: verde,
-                          size: 26,
+                      GestureDetector(
+                        onTap: () {
+                          if (_nomeUsuario != null) {
+                            Navigator.of(context).pushNamed('/menu');
+                          } else {
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                title: const Text(
+                                  'Acesse sua conta',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                content: const Text(
+                                  'Faça login ou cadastre-se para acessar seu perfil.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                                actionsAlignment: MainAxisAlignment.center,
+                                actionsPadding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  16,
+                                ),
+                                actions: [
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                        Navigator.of(
+                                          context,
+                                        ).pushNamedAndRemoveUntil(
+                                          '/login',
+                                          (_) => false,
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: verde,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text('Fazer login'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                        Navigator.of(
+                                          context,
+                                        ).pushNamedAndRemoveUntil(
+                                          '/cadastro',
+                                          (_) => false,
+                                        );
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: verde,
+                                        side: const BorderSide(color: verde),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text('Cadastrar'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_nomeUsuario != null) ...[
+                                Text(
+                                  'Olá, ${_nomeUsuario!.split(' ').first}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: verde,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              const Icon(
+                                Icons.person_outline,
+                                color: verde,
+                                size: 26,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       ValueListenableBuilder(
@@ -161,23 +299,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           );
                         },
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(
-                            context,
-                          ).pushNamedAndRemoveUntil('/login', (_) => false);
-                        },
-                        child: const Text(
-                          'Entrar/cadastrar',
-                          style: TextStyle(
-                            color: verde,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
-                            decorationColor: verde,
-                          ),
-                        ),
                       ),
                     ],
                   ),
