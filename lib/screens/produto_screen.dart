@@ -638,6 +638,19 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                             height: 54,
                             child: ElevatedButton(
                               onPressed: () {
+                                if (_tamanhoSelecionado == null) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Selecione o tamanho antes de continuar.',
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                  return;
+                                }
                                 CarrinhoService.instancia.adicionar(
                                   CarrinhoItem(
                                     produto: produto,

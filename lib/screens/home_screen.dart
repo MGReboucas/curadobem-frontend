@@ -587,9 +587,63 @@ class _CardProduto extends StatelessWidget {
                     width: double.infinity,
                     height: 34,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
+                        final tamanho = await showModalBottomSheet<String>(
+                          context: context,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(20)),
+                          ),
+                          builder: (ctx) => Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Selecione o tamanho',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: ['P', 'M', 'G', 'GG']
+                                      .map(
+                                        (t) => OutlinedButton(
+                                          onPressed: () =>
+                                              Navigator.of(ctx).pop(t),
+                                          style: OutlinedButton.styleFrom(
+                                            side: const BorderSide(
+                                                color: verde, width: 1.5),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            minimumSize:
+                                                const Size(60, 48),
+                                          ),
+                                          child: Text(
+                                            t,
+                                            style: const TextStyle(
+                                              color: verde,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                        if (tamanho == null) return;
                         CarrinhoService.instancia.adicionar(
-                          CarrinhoItem(produto: produto),
+                          CarrinhoItem(produto: produto, tamanho: tamanho),
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
