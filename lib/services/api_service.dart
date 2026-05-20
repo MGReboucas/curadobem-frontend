@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -86,5 +87,22 @@ class ApiService {
   static Future<http.Response> delete(String path) async {
     final headers = await _headers();
     return http.delete(Uri.parse('$baseUrl$path'), headers: headers);
+  }
+
+  static Future<http.Response> uploadFoto(
+    Uint8List bytes,
+    String filename,
+  ) async {
+    final token = await getToken();
+    final uri = Uri.parse('$baseUrl/usuario/perfil/foto');
+    final request = http.MultipartRequest('POST', uri);
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+    request.files.add(
+      http.MultipartFile.fromBytes('foto', bytes, filename: filename),
+    );
+    final streamed = await request.send();
+    return http.Response.fromStream(streamed);
   }
 }

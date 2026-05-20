@@ -1,7 +1,40 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
+
+String _formatTelefone(String digits) {
+  final d = digits.replaceAll(RegExp(r'\D'), '');
+  if (d.isEmpty) return '';
+  if (d.length <= 2) return '(${d}';
+  if (d.length <= 6) return '(${d.substring(0, 2)}) ${d.substring(2)}';
+  if (d.length <= 10) {
+    return '(${d.substring(0, 2)}) ${d.substring(2, 6)}-${d.substring(6)}';
+  }
+  return '(${d.substring(0, 2)}) ${d.substring(2, 7)}-${d.substring(7, 11)}';
+}
+
+class _TelefoneFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text
+        .replaceAll(RegExp(r'\D'), '')
+        .substring(
+          0,
+          newValue.text.replaceAll(RegExp(r'\D'), '').length.clamp(0, 11),
+        );
+    final formatted = _formatTelefone(digits);
+    return newValue.copyWith(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
 
 class MeusDadosScreen extends StatefulWidget {
   const MeusDadosScreen({super.key});
@@ -19,6 +52,9 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
   final _emailController = TextEditingController();
   final _telefoneController = TextEditingController();
   bool _salvando = false;
+  Uint8List? _fotoBytes;
+  String? _fotoUrl;
+  bool _enviandoFoto = false;
 
   @override
   void initState() {
@@ -34,6 +70,10 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
       setState(() {
         _nomeController.text = data['nome_completo']?.toString() ?? '';
         _emailController.text = data['email']?.toString() ?? '';
+        _telefoneController.text = _formatTelefone(
+          data['telefone']?.toString() ?? '',
+        );
+        _fotoUrl = data['foto_url']?.toString();
       });
     }
   }
@@ -46,12 +86,49 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
     super.dispose();
   }
 
+  Future<void> _escolherFoto() async {
+    final picker = ImagePicker();
+    final xFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 512,
+    );
+    if (xFile == null) return;
+    final bytes = await xFile.readAsBytes();
+    setState(() {
+      _fotoBytes = bytes;
+      _enviandoFoto = true;
+    });
+    final response = await ApiService.uploadFoto(bytes, xFile.name);
+    if (!mounted) return;
+    setState(() => _enviandoFoto = false);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      setState(() => _fotoUrl = data['foto_url']?.toString() ?? _fotoUrl);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Foto atualizada com sucesso!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      setState(() => _fotoBytes = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erro ao enviar a foto.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _salvar() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _salvando = true);
     final response = await ApiService.put('/usuario/perfil', {
       'nome_completo': _nomeController.text.trim(),
       'email': _emailController.text.trim(),
+      'telefone': _telefoneController.text.replaceAll(RegExp(r'\D'), ''),
     });
     if (!mounted) return;
     setState(() => _salvando = false);
@@ -89,40 +166,77 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
                     children: [
                       // Avatar
                       Center(
-                        child: Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 44,
-                              backgroundColor: const Color(0xFFE8F0E0),
-                              child: Text(
-                                _nomeController.text.isNotEmpty
-                                    ? _nomeController.text[0].toUpperCase()
-                                    : 'U',
-                                style: const TextStyle(
-                                  color: verde,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w700,
+                        child: GestureDetector(
+                          onTap: _enviandoFoto ? null : _escolherFoto,
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 44,
+                                backgroundColor: const Color(0xFFE8F0E0),
+                                backgroundImage: _fotoBytes != null
+                                    ? MemoryImage(_fotoBytes!) as ImageProvider
+                                    : (_fotoUrl != null && _fotoUrl!.isNotEmpty
+                                          ? NetworkImage(
+                                                  _fotoUrl!.startsWith('http')
+                                                      ? _fotoUrl!
+                                                      : 'http://127.0.0.1:8000$_fotoUrl',
+                                                )
+                                                as ImageProvider
+                                          : null),
+                                child:
+                                    (_fotoBytes == null &&
+                                        (_fotoUrl == null || _fotoUrl!.isEmpty))
+                                    ? Text(
+                                        _nomeController.text.isNotEmpty
+                                            ? _nomeController.text[0]
+                                                  .toUpperCase()
+                                            : 'U',
+                                        style: const TextStyle(
+                                          color: verde,
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              if (_enviandoFoto)
+                                Positioned.fill(
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black38,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Center(
+                                      child: SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: const BoxDecoration(
+                                    color: verde,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: Container(
-                                width: 28,
-                                height: 28,
-                                decoration: const BoxDecoration(
-                                  color: verde,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
 
@@ -153,10 +267,7 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
                         controller: _telefoneController,
                         hint: '(00) 00000-0000',
                         keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(11),
-                        ],
+                        inputFormatters: [_TelefoneFormatter()],
                       ),
 
                       const SizedBox(height: 32),
