@@ -6,6 +6,7 @@ import 'screens/cadastro_screen.dart';
 import 'screens/carrinho_screen.dart';
 import 'screens/checkout_screen.dart';
 import 'screens/menu_cliente_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -24,8 +25,21 @@ class MyApp extends StatelessWidget {
         textTheme: GoogleFonts.poppinsTextTheme(),
         fontFamily: GoogleFonts.poppins().fontFamily,
       ),
-      initialRoute: '/',
+      initialRoute: '/splash',
+      onGenerateRoute: (settings) {
+        if (settings.name == '/') {
+          return PageRouteBuilder(
+            settings: settings,
+            pageBuilder: (_, __, ___) => const HomeScreen(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 500),
+          );
+        }
+        return null;
+      },
       routes: {
+        '/splash': (_) => const SplashScreen(),
         '/': (_) => const HomeScreen(),
         '/login': (_) => const LoginScreen(),
         '/cadastro': (_) => const CadastroScreen(),
