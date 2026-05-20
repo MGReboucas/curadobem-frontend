@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/forma_pagamento.dart';
+import '../services/api_service.dart';
 import '../services/carrinho_service.dart';
+import '../services/pedido_service.dart';
 import 'confirmacao_pedido_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -57,15 +60,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final cep = _cepController.text.replaceAll(RegExp(r'\D'), '');
     if (cep.length != 8) return;
     setState(() => _buscandoCep = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() {
-      _buscandoCep = false;
-      _ruaController.text = 'Rua das Flores';
-      _bairroController.text = 'Centro';
-      _cidadeController.text = 'São Paulo';
-      _estadoController.text = 'SP';
-    });
+    try {
+      final response = await ApiService.get('/cep/$cep');
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        setState(() {
+          _buscandoCep = false;
+          _ruaController.text =
+              data['logradouro']?.toString() ?? data['rua']?.toString() ?? '';
+          _bairroController.text = data['bairro']?.toString() ?? '';
+          _cidadeController.text =
+              data['cidade']?.toString() ??
+              data['localidade']?.toString() ??
+              '';
+          _estadoController.text =
+              data['uf']?.toString() ?? data['estado']?.toString() ?? '';
+        });
+      } else {
+        if (mounted) setState(() => _buscandoCep = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _buscandoCep = false);
+    }
   }
 
   Future<void> _fazerPedido() async {
@@ -80,13 +97,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
     setState(() => _processando = true);
-    await Future.delayed(const Duration(seconds: 1));
+
+    final endereco = {
+      'cep': _cepController.text,
+      'rua': _ruaController.text,
+      'numero': _numeroController.text,
+      'complemento': _complementoController.text,
+      'bairro': _bairroController.text,
+      'cidade': _cidadeController.text,
+      'estado': _estadoController.text,
+    };
+
+    final resultado = await PedidoService.criarPedido(
+      itens: CarrinhoService.instancia.itens.value,
+      endereco: endereco,
+      formaPagamento: _formaPagamento!,
+    );
+
     if (!mounted) return;
     setState(() => _processando = false);
 
-    final numeroPedido = DateTime.now().millisecondsSinceEpoch
-        .toString()
-        .substring(7);
+    if (resultado['sucesso'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(resultado['mensagem'] ?? 'Erro ao finalizar pedido.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final dados = resultado['dados'] as Map<String, dynamic>? ?? {};
+    final numeroPedido =
+        dados['id']?.toString() ??
+        dados['numero']?.toString() ??
+        DateTime.now().millisecondsSinceEpoch.toString().substring(7);
     final total = CarrinhoService.instancia.total;
     CarrinhoService.instancia.limpar();
 

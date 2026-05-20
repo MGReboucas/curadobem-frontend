@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/carrinho_item.dart';
+import '../services/api_service.dart';
 import '../services/carrinho_service.dart';
 import 'carrinho_screen.dart';
 
@@ -47,15 +49,49 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
       _erroFrete = null;
       _opcoesEntrega = [];
     });
-    // Simulação de chamada à API de frete
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {
-      _calculandoFrete = false;
-      _opcoesEntrega = [
-        {'nome': 'PAC', 'prazo': '7 a 10 dias úteis', 'valor': 'R\$ 14,90'},
-        {'nome': 'SEDEX', 'prazo': '2 a 4 dias úteis', 'valor': 'R\$ 28,50'},
-      ];
-    });
+    try {
+      final response = await ApiService.post('/frete/calcular', {
+        'cep_destino': cep,
+        'itens': [
+          {'produto_id': widget.produto['id'], 'quantidade': _quantidade},
+        ],
+      });
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        List<dynamic> opcoesBruto;
+        if (data is List) {
+          opcoesBruto = data;
+        } else if (data is Map && data['opcoes'] is List) {
+          opcoesBruto = data['opcoes'] as List;
+        } else {
+          opcoesBruto = [];
+        }
+        setState(() {
+          _calculandoFrete = false;
+          _opcoesEntrega = opcoesBruto.map((o) {
+            final m = o as Map<String, dynamic>;
+            return {
+              'nome': m['nome']?.toString() ?? m['servico']?.toString() ?? '',
+              'prazo': m['prazo']?.toString() ?? '',
+              'valor': m['valor']?.toString() ?? '',
+            };
+          }).toList();
+        });
+      } else {
+        setState(() {
+          _calculandoFrete = false;
+          _erroFrete = 'Não foi possível calcular o frete.';
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _calculandoFrete = false;
+          _erroFrete = 'Não foi possível calcular o frete.';
+        });
+      }
+    }
   }
 
   @override

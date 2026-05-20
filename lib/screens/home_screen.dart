@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/carrinho_item.dart';
 import '../services/carrinho_service.dart';
+import '../services/produto_service.dart';
 import 'carrinho_screen.dart';
 import 'produto_screen.dart';
 
@@ -20,28 +21,64 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _filtrosAberto = false;
   String? _categoriaSelecionada;
+  bool _carregando = true;
 
-  final List<String> _categorias = [
-    'Blusas',
-    'Vestidos',
-    'Calças',
-    'Oculos',
-    'Bijuteria',
-  ];
+  List<String> _categorias = [];
 
-  final List<Map<String, String>> _novosProdutos = [
-    {'nome': 'Blusa feminina azul com...', 'preco': 'R\$ 99,90'},
-    {'nome': 'Blusa feminina azul com...', 'preco': 'R\$ 99,90'},
-    {'nome': 'Blusa feminina azul com...', 'preco': 'R\$ 99,90'},
-    {'nome': 'Blusa feminina azul com...', 'preco': 'R\$ 99,90'},
-  ];
+  List<Map<String, String>> _novosProdutos = [];
+  List<Map<String, String>> _outrosProdutos = [];
 
-  final List<Map<String, String>> _outrosProdutos = [
-    {'nome': 'Blusa feminina azul com...', 'preco': 'R\$ 99,90'},
-    {'nome': 'Blusa feminina azul com...', 'preco': 'R\$ 99,90'},
-    {'nome': 'Blusa feminina azul com...', 'preco': 'R\$ 99,90'},
-    {'nome': 'Blusa feminina azul com...', 'preco': 'R\$ 99,90'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _carregarCategorias();
+    _carregarProdutos();
+  }
+
+  Future<void> _carregarCategorias() async {
+    final cats = await ProdutoService.getCategorias();
+    if (!mounted) return;
+    setState(() => _categorias = cats);
+  }
+
+  Future<void> _carregarProdutos() async {
+    setState(() => _carregando = true);
+    final busca = _searchController.text.trim();
+    final dados = await ProdutoService.getProdutos(
+      busca: busca.isEmpty ? null : busca,
+      categoria: _categoriaSelecionada,
+    );
+    if (!mounted) return;
+    final todos = dados.map(_mapearProduto).toList();
+    final metade = (todos.length / 2).ceil();
+    setState(() {
+      _novosProdutos = todos.take(metade).toList();
+      _outrosProdutos = todos.skip(metade).toList();
+      _carregando = false;
+    });
+  }
+
+  Map<String, String> _mapearProduto(Map<String, dynamic> p) {
+    String precoFormatado;
+    if (p['preco_formatado'] != null) {
+      precoFormatado = p['preco_formatado'].toString();
+    } else {
+      final preco = p['preco'];
+      if (preco is num) {
+        precoFormatado = 'R\$ ${preco.toStringAsFixed(2).replaceAll('.', ',')}';
+      } else {
+        precoFormatado = preco?.toString() ?? '';
+      }
+    }
+    return {
+      'id': p['id']?.toString() ?? '',
+      'nome': p['nome']?.toString() ?? '',
+      'preco': precoFormatado,
+      'descricao': p['descricao']?.toString() ?? '',
+      'categoria': p['categoria']?.toString() ?? '',
+      'imagem_url': p['imagem_url']?.toString() ?? '',
+    };
+  }
 
   @override
   void dispose() {
@@ -173,6 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: TextField(
                         controller: _searchController,
                         textAlign: TextAlign.center,
+                        onSubmitted: (_) => _carregarProdutos(),
                         decoration: const InputDecoration(
                           hintText: 'Pesquise seu look',
                           hintStyle: TextStyle(
@@ -245,10 +283,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(height: 10),
                             ..._categorias.map(
                               (cat) => GestureDetector(
-                                onTap: () => setState(
-                                  () => _categoriaSelecionada =
-                                      _categoriaSelecionada == cat ? null : cat,
-                                ),
+                                onTap: () {
+                                  setState(
+                                    () => _categoriaSelecionada =
+                                        _categoriaSelecionada == cat
+                                        ? null
+                                        : cat,
+                                  );
+                                  _carregarProdutos();
+                                },
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 5,
@@ -278,14 +321,35 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Novos Produtos
                     _secaoTitulo('Novos Produtos:'),
                     const SizedBox(height: 10),
-                    _gridProdutos(_novosProdutos),
+                    if (_carregando)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32),
+                          child: CircularProgressIndicator(color: verde),
+                        ),
+                      )
+                    else if (_novosProdutos.isEmpty && _outrosProdutos.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 32),
+                        child: Center(
+                          child: Text(
+                            'Nenhum produto encontrado.',
+                            style: TextStyle(color: Colors.black45),
+                          ),
+                        ),
+                      )
+                    else ...[
+                      _gridProdutos(_novosProdutos),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    // Outros Produtos
-                    _secaoTitulo('Outros Produtos:'),
-                    const SizedBox(height: 10),
-                    _gridProdutos(_outrosProdutos),
+                      // Outros Produtos
+                      if (_outrosProdutos.isNotEmpty) ...[
+                        _secaoTitulo('Outros Produtos:'),
+                        const SizedBox(height: 10),
+                        _gridProdutos(_outrosProdutos),
+                      ],
+                    ],
 
                     const SizedBox(height: 24),
                   ],

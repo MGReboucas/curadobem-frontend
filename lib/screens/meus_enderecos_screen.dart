@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/api_service.dart';
 
 class MeusEnderecosScreen extends StatefulWidget {
   const MeusEnderecosScreen({super.key});
@@ -12,34 +14,56 @@ class _MeusEnderecosScreenState extends State<MeusEnderecosScreen> {
   static const Color verde = Color(0xFF627348);
   static const Color bege = Color(0xFFF3EBD6);
 
-  final List<Map<String, String>> _enderecos = [
-    {
-      'apelido': 'Casa',
-      'rua': 'Rua das Flores, 123',
-      'complemento': 'Apto 4B',
-      'bairro': 'Centro',
-      'cidade': 'São Paulo',
-      'estado': 'SP',
-    },
-    {
-      'apelido': 'Trabalho',
-      'rua': 'Av. Paulista, 1000',
-      'complemento': '',
-      'bairro': 'Bela Vista',
-      'cidade': 'São Paulo',
-      'estado': 'SP',
-    },
-  ];
+  List<Map<String, String>> _enderecos = [];
+  bool _carregando = true;
 
-  void _remover(int index) {
+  @override
+  void initState() {
+    super.initState();
+    _carregarEnderecos();
+  }
+
+  Future<void> _carregarEnderecos() async {
+    final response = await ApiService.get('/usuario/enderecos');
+    if (!mounted) return;
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      setState(() {
+        _enderecos = data.map((e) {
+          final m = e as Map<String, dynamic>;
+          return {
+            'id': m['id']?.toString() ?? '',
+            'apelido': m['apelido']?.toString() ?? '',
+            'rua': m['rua']?.toString() ?? '',
+            'numero': m['numero']?.toString() ?? '',
+            'complemento': m['complemento']?.toString() ?? '',
+            'bairro': m['bairro']?.toString() ?? '',
+            'cidade': m['cidade']?.toString() ?? '',
+            'estado': m['estado']?.toString() ?? '',
+            'cep': m['cep']?.toString() ?? '',
+          };
+        }).toList();
+        _carregando = false;
+      });
+    } else {
+      setState(() => _carregando = false);
+    }
+  }
+
+  Future<void> _remover(int index) async {
+    final id = _enderecos[index]['id'] ?? '';
+    if (id.isNotEmpty) {
+      await ApiService.delete('/usuario/enderecos/$id');
+    }
+    if (!mounted) return;
     setState(() => _enderecos.removeAt(index));
   }
 
   void _abrirFormulario({Map<String, String>? endereco, int? index}) {
     final apelidoCtrl = TextEditingController(text: endereco?['apelido'] ?? '');
-    final cepCtrl = TextEditingController();
+    final cepCtrl = TextEditingController(text: endereco?['cep'] ?? '');
     final ruaCtrl = TextEditingController(text: endereco?['rua'] ?? '');
-    final numCtrl = TextEditingController();
+    final numCtrl = TextEditingController(text: endereco?['numero'] ?? '');
     final compCtrl = TextEditingController(
       text: endereco?['complemento'] ?? '',
     );
@@ -168,26 +192,31 @@ class _MeusEnderecosScreenState extends State<MeusEnderecosScreen> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (!(formKey.currentState?.validate() ?? false))
                           return;
-                        final novo = {
+                        final body = {
                           'apelido': apelidoCtrl.text,
-                          'rua':
-                              '${ruaCtrl.text}${numCtrl.text.isNotEmpty ? ', ${numCtrl.text}' : ''}',
+                          'rua': ruaCtrl.text,
+                          'numero': numCtrl.text,
                           'complemento': compCtrl.text,
                           'bairro': bairroCtrl.text,
                           'cidade': cidadeCtrl.text,
                           'estado': estadoCtrl.text.toUpperCase(),
+                          'cep': cepCtrl.text,
                         };
-                        setState(() {
-                          if (index != null) {
-                            _enderecos[index] = novo;
-                          } else {
-                            _enderecos.add(novo);
-                          }
-                        });
-                        Navigator.of(context).pop();
+                        final response = index != null
+                            ? await ApiService.put(
+                                '/usuario/enderecos/${_enderecos[index]['id']}',
+                                body,
+                              )
+                            : await ApiService.post('/usuario/enderecos', body);
+                        if (!context.mounted) return;
+                        if (response.statusCode == 200 ||
+                            response.statusCode == 201) {
+                          Navigator.of(context).pop();
+                          _carregarEnderecos();
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: verde,
@@ -305,7 +334,9 @@ class _MeusEnderecosScreenState extends State<MeusEnderecosScreen> {
             ),
 
             Expanded(
-              child: _enderecos.isEmpty
+              child: _carregando
+                  ? const Center(child: CircularProgressIndicator(color: verde))
+                  : _enderecos.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -376,7 +407,7 @@ class _MeusEnderecosScreenState extends State<MeusEnderecosScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      e['rua'] ?? '',
+                                      '${e['rua'] ?? ''}${(e['numero'] ?? '').isNotEmpty ? ', ${e['numero']}' : ''}',
                                       style: const TextStyle(
                                         fontSize: 13,
                                         color: Colors.black54,

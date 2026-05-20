@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,14 +18,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final Color verde = const Color(0xFF627348);
   final Color bege = const Color(0xFFF3EBD6);
 
-  static const String _usuarioValido = 'admin';
-  static const String _senhaValida = 'admin123';
-
   void entrar() async {
     final login = loginController.text.trim();
     final senha = senhaController.text;
 
-    // Validação de campos vazios
     if (login.isEmpty || senha.isEmpty) {
       setState(() {
         erroMensagem = 'Preencha o usuário e a senha.';
@@ -37,19 +34,18 @@ class _LoginScreenState extends State<LoginScreen> {
       erroMensagem = null;
     });
 
-    // Simula chamada de autenticação
-    await Future.delayed(const Duration(seconds: 1));
+    final resultado = await AuthService.login(login, senha);
 
     setState(() {
       carregando = false;
     });
 
-    if (login == _usuarioValido && senha == _senhaValida) {
+    if (resultado['sucesso'] == true) {
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
     } else {
       setState(() {
-        erroMensagem = 'Usuário ou senha inválidos.';
+        erroMensagem = resultado['mensagem'] ?? 'Usuário ou senha inválidos.';
       });
     }
   }

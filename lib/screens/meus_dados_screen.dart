@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/api_service.dart';
 
 class MeusDadosScreen extends StatefulWidget {
   const MeusDadosScreen({super.key});
@@ -13,10 +15,28 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
   static const Color bege = Color(0xFFF3EBD6);
 
   final _formKey = GlobalKey<FormState>();
-  final _nomeController = TextEditingController(text: 'Usuário');
-  final _emailController = TextEditingController(text: 'usuario@email.com');
+  final _nomeController = TextEditingController();
+  final _emailController = TextEditingController();
   final _telefoneController = TextEditingController();
   bool _salvando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarPerfil();
+  }
+
+  Future<void> _carregarPerfil() async {
+    final response = await ApiService.get('/usuario/perfil');
+    if (!mounted) return;
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      setState(() {
+        _nomeController.text = data['nome_completo']?.toString() ?? '';
+        _emailController.text = data['email']?.toString() ?? '';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -29,15 +49,27 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
   Future<void> _salvar() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _salvando = true);
-    await Future.delayed(const Duration(seconds: 1));
+    final response = await ApiService.put('/usuario/perfil', {
+      'nome_completo': _nomeController.text.trim(),
+      'email': _emailController.text.trim(),
+    });
     if (!mounted) return;
     setState(() => _salvando = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Dados salvos com sucesso!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Dados salvos com sucesso!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erro ao salvar dados.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -59,12 +91,14 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
                       Center(
                         child: Stack(
                           children: [
-                            const CircleAvatar(
+                            CircleAvatar(
                               radius: 44,
-                              backgroundColor: Color(0xFFE8F0E0),
+                              backgroundColor: const Color(0xFFE8F0E0),
                               child: Text(
-                                'U',
-                                style: TextStyle(
+                                _nomeController.text.isNotEmpty
+                                    ? _nomeController.text[0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
                                   color: verde,
                                   fontSize: 32,
                                   fontWeight: FontWeight.w700,

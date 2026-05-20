@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import 'login_screen.dart';
 
 class CadastroScreen extends StatefulWidget {
@@ -40,20 +41,31 @@ class _CadastroScreenState extends State<CadastroScreen> {
       erroMensagem = null;
     });
 
-    // Simulação de criação de conta
-    await Future.delayed(const Duration(seconds: 1));
+    final resultado = await AuthService.register(
+      usuarioController.text.trim(),
+      emailController.text.trim(),
+      senhaController.text,
+      confirmaSenhaController.text,
+    );
 
     setState(() {
       carregando = false;
     });
 
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Conta criada com sucesso!')));
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+
+    if (resultado['sucesso'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Conta criada com sucesso!')),
+      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    } else {
+      setState(() {
+        erroMensagem = resultado['mensagem'] ?? 'Erro ao criar conta.';
+      });
+    }
   }
 
   @override

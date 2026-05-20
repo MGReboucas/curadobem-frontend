@@ -1,41 +1,49 @@
 import 'package:flutter/material.dart';
+import '../services/pedido_service.dart';
 
-class MeusPedidosScreen extends StatelessWidget {
+class MeusPedidosScreen extends StatefulWidget {
   const MeusPedidosScreen({super.key});
 
+  @override
+  State<MeusPedidosScreen> createState() => _MeusPedidosScreenState();
+}
+
+class _MeusPedidosScreenState extends State<MeusPedidosScreen> {
   static const Color verde = Color(0xFF627348);
   static const Color bege = Color(0xFFF3EBD6);
 
-  static final List<Map<String, dynamic>> _pedidos = [
-    {
-      'numero': '0001234',
-      'data': '12/05/2026',
-      'status': 'Entregue',
-      'total': 'R\$ 199,80',
-      'itens': '2 itens',
-    },
-    {
-      'numero': '0001156',
-      'data': '28/04/2026',
-      'status': 'Em trânsito',
-      'total': 'R\$ 99,90',
-      'itens': '1 item',
-    },
-    {
-      'numero': '0001089',
-      'data': '10/04/2026',
-      'status': 'Entregue',
-      'total': 'R\$ 349,70',
-      'itens': '3 itens',
-    },
-    {
-      'numero': '0000987',
-      'data': '22/03/2026',
-      'status': 'Cancelado',
-      'total': 'R\$ 49,90',
-      'itens': '1 item',
-    },
-  ];
+  List<Map<String, dynamic>> _pedidos = [];
+  bool _carregando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarPedidos();
+  }
+
+  Future<void> _carregarPedidos() async {
+    final dados = await PedidoService.getMeusPedidos();
+    if (!mounted) return;
+    setState(() {
+      _pedidos = dados;
+      _carregando = false;
+    });
+  }
+
+  String _formatarTotal(dynamic preco) {
+    if (preco is num) {
+      return 'R\$ ${preco.toStringAsFixed(2).replaceAll('.', ',')}';
+    }
+    return preco?.toString() ?? '';
+  }
+
+  String _formatarItens(dynamic itens) {
+    if (itens is List) {
+      final qtd = itens.length;
+      return '$qtd ${qtd == 1 ? 'item' : 'itens'}';
+    }
+    return itens?.toString() ?? '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +54,9 @@ class MeusPedidosScreen extends StatelessWidget {
           children: [
             _buildHeader(context),
             Expanded(
-              child: _pedidos.isEmpty
+              child: _carregando
+                  ? const Center(child: CircularProgressIndicator(color: verde))
+                  : _pedidos.isEmpty
                   ? const Center(
                       child: Text(
                         'Nenhum pedido encontrado.',
@@ -68,13 +78,19 @@ class MeusPedidosScreen extends StatelessWidget {
   }
 
   Widget _buildPedidoCard(Map<String, dynamic> pedido) {
-    final status = pedido['status'] as String;
-    final statusColor = switch (status) {
-      'Entregue' => const Color(0xFF4CAF50),
-      'Em trânsito' => const Color(0xFF2196F3),
-      'Cancelado' => Colors.redAccent,
+    final status =
+        (pedido['status'] ?? pedido['estado'] ?? 'Pendente') as String;
+    final statusColor = switch (status.toLowerCase()) {
+      'entregue' => const Color(0xFF4CAF50),
+      'em trânsito' || 'enviado' || 'a caminho' => const Color(0xFF2196F3),
+      'cancelado' || 'cancelada' => Colors.redAccent,
       _ => Colors.orange,
     };
+    final numero =
+        pedido['id']?.toString() ?? pedido['numero']?.toString() ?? '-';
+    final data = pedido['data'] ?? pedido['created_at'] ?? '';
+    final totalStr = _formatarTotal(pedido['total'] ?? pedido['valor_total']);
+    final itensStr = _formatarItens(pedido['itens'] ?? pedido['items']);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -96,7 +112,7 @@ class MeusPedidosScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Pedido nº ${pedido['numero']}',
+                'Pedido nº $numero',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -129,10 +145,10 @@ class MeusPedidosScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfo(Icons.calendar_today_outlined, pedido['data']),
-              _buildInfo(Icons.inventory_2_outlined, pedido['itens']),
+              _buildInfo(Icons.calendar_today_outlined, data.toString()),
+              _buildInfo(Icons.inventory_2_outlined, itensStr),
               Text(
-                pedido['total'],
+                totalStr,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
