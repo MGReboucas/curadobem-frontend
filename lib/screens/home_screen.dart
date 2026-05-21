@@ -507,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: produtos.length,
       itemBuilder: (context, index) {
         final p = produtos[index];
-        return _CardProduto(produto: p);
+        return _CardProduto(produto: p, nomeUsuario: _nomeUsuario);
       },
     );
   }
@@ -515,10 +515,65 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _CardProduto extends StatelessWidget {
   final Map<String, String> produto;
+  final String? nomeUsuario;
 
-  const _CardProduto({required this.produto});
+  const _CardProduto({required this.produto, this.nomeUsuario});
 
   static const Color verde = Color(0xFF627348);
+
+  Future<bool> _exigirLogin(BuildContext context) async {
+    if (nomeUsuario != null) return true;
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Acesse sua conta',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        content: const Text(
+          'Faça login ou cadastre-se para adicionar produtos ao carrinho.',
+          style: TextStyle(fontSize: 14, color: Colors.black54),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: verde,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Fazer login'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamedAndRemoveUntil('/cadastro', (_) => false);
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: verde,
+                side: const BorderSide(color: verde),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Criar conta'),
+            ),
+          ),
+        ],
+      ),
+    );
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -588,6 +643,8 @@ class _CardProduto extends StatelessWidget {
                     height: 34,
                     child: ElevatedButton(
                       onPressed: () async {
+                        if (!await _exigirLogin(context)) return;
+                        if (!context.mounted) return;
                         final tamanho = await showModalBottomSheet<String>(
                           context: context,
                           shape: const RoundedRectangleBorder(
@@ -676,11 +733,16 @@ class _CardProduto extends StatelessWidget {
                     width: double.infinity,
                     height: 34,
                     child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ProdutoScreen(produto: produto),
-                        ),
-                      ),
+                      onPressed: () async {
+                        if (!await _exigirLogin(context)) return;
+                        if (!context.mounted) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ProdutoScreen(produto: produto),
+                          ),
+                        );
+                      },
+
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: verde, width: 1.5),
                         shape: RoundedRectangleBorder(
