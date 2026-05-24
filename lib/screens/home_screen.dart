@@ -140,6 +140,55 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      ValueListenableBuilder(
+                        valueListenable: CarrinhoService.instancia.itens,
+                        builder: (context, itens, _) {
+                          final total = itens.fold<int>(
+                            0,
+                            (s, i) => s + i.quantidade,
+                          );
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              IconButton(
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const CarrinhoScreen(),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.shopping_bag_outlined,
+                                  color: verde,
+                                  size: 26,
+                                ),
+                              ),
+                              if (total > 0)
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Container(
+                                    width: 16,
+                                    height: 16,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.redAccent,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '$total',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
                       GestureDetector(
                         onTap: () {
                           if (_nomeUsuario != null) {
@@ -251,55 +300,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ),
-                      ),
-                      ValueListenableBuilder(
-                        valueListenable: CarrinhoService.instancia.itens,
-                        builder: (context, itens, _) {
-                          final total = itens.fold<int>(
-                            0,
-                            (s, i) => s + i.quantidade,
-                          );
-                          return Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              IconButton(
-                                onPressed: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const CarrinhoScreen(),
-                                  ),
-                                ),
-                                icon: const Icon(
-                                  Icons.shopping_bag_outlined,
-                                  color: verde,
-                                  size: 26,
-                                ),
-                              ),
-                              if (total > 0)
-                                Positioned(
-                                  top: 6,
-                                  right: 6,
-                                  child: Container(
-                                    width: 16,
-                                    height: 16,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.redAccent,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '$total',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          );
-                        },
                       ),
                     ],
                   ),
@@ -582,6 +582,8 @@ class _BannerCarouselState extends State<_BannerCarousel> {
                     _banners[index],
                     fit: BoxFit.cover,
                     width: double.infinity,
+                    errorBuilder: (_, __, ___) =>
+                        Container(color: const Color(0xFFE8E0CC)),
                   ),
                 ),
               );
@@ -642,12 +644,16 @@ class _CardProduto extends StatelessWidget {
             child: ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/login', (_) => false);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: verde,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Fazer login'),
             ),
@@ -658,12 +664,16 @@ class _CardProduto extends StatelessWidget {
             child: OutlinedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).pushNamedAndRemoveUntil('/cadastro', (_) => false);
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/cadastro', (_) => false);
               },
               style: OutlinedButton.styleFrom(
                 foregroundColor: verde,
                 side: const BorderSide(color: verde),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Criar conta'),
             ),

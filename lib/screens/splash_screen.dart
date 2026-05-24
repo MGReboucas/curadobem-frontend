@@ -34,7 +34,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2600),
+      duration: const Duration(milliseconds: 1400),
     );
 
     _logoFadeIn = Tween<double>(begin: 0.0, end: 1.0).animate(
