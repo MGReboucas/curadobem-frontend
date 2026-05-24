@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/carrinho_item.dart';
@@ -439,6 +440,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 14),
 
+                    // Banners
+                    const _BannerCarousel(),
+
+                    const SizedBox(height: 14),
+
                     // Novos Produtos
                     _secaoTitulo('Novos Produtos:'),
                     const SizedBox(height: 10),
@@ -509,6 +515,99 @@ class _HomeScreenState extends State<HomeScreen> {
         final p = produtos[index];
         return _CardProduto(produto: p);
       },
+    );
+  }
+}
+
+class _BannerCarousel extends StatefulWidget {
+  const _BannerCarousel();
+
+  @override
+  State<_BannerCarousel> createState() => _BannerCarouselState();
+}
+
+class _BannerCarouselState extends State<_BannerCarousel> {
+  static const _banners = [
+    'assets/images/banners/banner-frete-gratis.png',
+    'assets/images/banners/categorias.png',
+    'assets/images/banners/cuppons-20-30-desconto.png',
+  ];
+
+  late final PageController _pageController;
+  int _currentPage = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _currentPage);
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      final nextPage = (_currentPage + 1) % _banners.length;
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 160,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: _banners.length,
+            onPageChanged: (i) => setState(() => _currentPage = i),
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    _banners[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            _banners.length,
+            (i) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: _currentPage == i ? 18 : 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: _currentPage == i
+                    ? const Color(0xFF627348)
+                    : const Color(0xFF627348).withOpacity(0.3),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -592,7 +691,8 @@ class _CardProduto extends StatelessWidget {
                           context: context,
                           shape: const RoundedRectangleBorder(
                             borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(20)),
+                              top: Radius.circular(20),
+                            ),
                           ),
                           builder: (ctx) => Padding(
                             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -618,13 +718,14 @@ class _CardProduto extends StatelessWidget {
                                               Navigator.of(ctx).pop(t),
                                           style: OutlinedButton.styleFrom(
                                             side: const BorderSide(
-                                                color: verde, width: 1.5),
+                                              color: verde,
+                                              width: 1.5,
+                                            ),
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(10),
                                             ),
-                                            minimumSize:
-                                                const Size(60, 48),
+                                            minimumSize: const Size(60, 48),
                                           ),
                                           child: Text(
                                             t,
