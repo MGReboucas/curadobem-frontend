@@ -44,6 +44,60 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
     }
   }
 
+  Future<bool> _exigirLogin(BuildContext context) async {
+    if (_nomeUsuario != null) return true;
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Acesse sua conta',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        content: const Text(
+          'Faça login ou cadastre-se para continuar.',
+          style: TextStyle(fontSize: 14, color: Colors.black54),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF627348),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Fazer login'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamedAndRemoveUntil('/cadastro', (_) => false);
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF627348),
+                side: const BorderSide(color: Color(0xFF627348)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Criar conta'),
+            ),
+          ),
+        ],
+      ),
+    );
+    return false;
+  }
+
   @override
   void dispose() {
     _cepController.dispose();
@@ -637,7 +691,9 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                             width: double.infinity,
                             height: 54,
                             child: ElevatedButton(
-                              onPressed: () {
+                              onPressed: () async {
+                                if (!await _exigirLogin(context)) return;
+                                if (!context.mounted) return;
                                 if (_tamanhoSelecionado == null) {
                                   ScaffoldMessenger.of(context)
                                       .showSnackBar(
@@ -704,7 +760,9 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                             width: double.infinity,
                             height: 54,
                             child: OutlinedButton(
-                              onPressed: () {},
+                              onPressed: () async {
+                                if (!await _exigirLogin(context)) return;
+                              },
                               style: OutlinedButton.styleFrom(
                                 side: const BorderSide(color: verde, width: 2),
                                 shape: RoundedRectangleBorder(
