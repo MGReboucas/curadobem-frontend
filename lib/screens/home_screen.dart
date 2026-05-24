@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _categoriaSelecionada;
   bool _carregando = true;
   String? _nomeUsuario;
+  String? _fotoUrl;
 
   List<String> _categorias = [];
 
@@ -41,14 +42,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _carregarUsuario() async {
-    // Lê o nome salvo no login (resposta imediata)
+    // Lê nome e foto do cache (resposta imediata)
     final nomeSalvo = await ApiService.getNome();
+    final fotoSalva = await ApiService.getFotoUrl();
     if (!mounted) return;
     if (nomeSalvo != null && nomeSalvo.isNotEmpty) {
-      setState(() => _nomeUsuario = nomeSalvo);
-      return;
+      setState(() {
+        _nomeUsuario = nomeSalvo;
+        _fotoUrl = ApiService.resolverFotoUrl(fotoSalva);
+      });
     }
-    // Fallback: busca da API (caso não tenha no cache)
+    // Sempre busca da API para manter foto atualizada
     final response = await ApiService.get('/usuario/perfil');
     if (!mounted) return;
     if (response.statusCode == 200) {
@@ -64,10 +68,18 @@ class _HomeScreenState extends State<HomeScreen> {
           data['nome']?.toString()?.trim() ??
           data['username']?.toString()?.trim() ??
           data['email']?.toString()?.trim();
-      if (nome != null && nome.isNotEmpty) {
-        await ApiService.saveNome(nome);
-        setState(() => _nomeUsuario = nome);
-      }
+      final foto = ApiService.resolverFotoUrl(
+        data['foto_url']?.toString()?.trim(),
+      );
+      if (nome != null && nome.isNotEmpty) await ApiService.saveNome(nome);
+      if (foto != null && foto.isNotEmpty) await ApiService.saveFotoUrl(foto);
+      if (!mounted) return;
+      setState(() {
+        if (nome != null && nome.isNotEmpty) _nomeUsuario = nome;
+        _fotoUrl = (foto != null && foto.isNotEmpty)
+            ? foto
+            : ApiService.resolverFotoUrl(fotoSalva);
+      });
     }
   }
 
@@ -192,7 +204,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       GestureDetector(
                         onTap: () {
                           if (_nomeUsuario != null) {
-                            Navigator.of(context).pushNamed('/menu');
+                            Navigator.of(context).pushNamed('/menu').then((_) {
+                              if (mounted) _carregarUsuario();
+                            });
                           } else {
                             showDialog(
                               context: context,
@@ -290,13 +304,57 @@ class _HomeScreenState extends State<HomeScreen> {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(width: 4),
-                              ],
-                              const Icon(
-                                Icons.person_outline,
-                                color: verde,
-                                size: 26,
-                              ),
+                                const SizedBox(width: 8),
+                                // Logado: foto ou círculo com inicial
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFDDE5D0),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child:
+                                      (_fotoUrl != null && _fotoUrl!.isNotEmpty)
+                                      ? Image.network(
+                                          _fotoUrl!,
+                                          width: 32,
+                                          height: 32,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Center(
+                                            child: Text(
+                                              _nomeUsuario!.trim().isNotEmpty
+                                                  ? _nomeUsuario![0]
+                                                        .toUpperCase()
+                                                  : '?',
+                                              style: const TextStyle(
+                                                color: verde,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                      : Center(
+                                          child: Text(
+                                            _nomeUsuario!.trim().isNotEmpty
+                                                ? _nomeUsuario![0].toUpperCase()
+                                                : '?',
+                                            style: const TextStyle(
+                                              color: verde,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ] else
+                                // Deslogado: ícone de pessoa
+                                const Icon(
+                                  Icons.person_outline,
+                                  color: verde,
+                                  size: 26,
+                                ),
                             ],
                           ),
                         ),

@@ -89,6 +89,81 @@ class AuthService {
     }
   }
 
+  static Future<Map<String, dynamic>> solicitarRedefinicao(String email) async {
+    try {
+      final response = await ApiService.post('/auth/solicitar-redefinicao', {
+        'email': email,
+      }, auth: false);
+      if (response.statusCode == 200) return {'sucesso': true};
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return {
+        'sucesso': false,
+        'mensagem': data['detail'] is String
+            ? data['detail']
+            : 'Erro ao enviar código.',
+      };
+    } catch (_) {
+      return {
+        'sucesso': false,
+        'mensagem': 'Não foi possível conectar ao servidor.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> verificarCodigo(
+    String email,
+    String codigo,
+  ) async {
+    try {
+      final response = await ApiService.post('/auth/verificar-codigo', {
+        'email': email,
+        'codigo': codigo,
+      }, auth: false);
+      if (response.statusCode == 200) return {'sucesso': true};
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return {
+        'sucesso': false,
+        'mensagem': data['detail'] is String
+            ? data['detail']
+            : 'Código inválido ou expirado.',
+      };
+    } catch (_) {
+      return {
+        'sucesso': false,
+        'mensagem': 'Não foi possível conectar ao servidor.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> redefinirSenha(
+    String email,
+    String codigo,
+    String novaSenha,
+    String confirmaSenha,
+  ) async {
+    try {
+      final response = await ApiService.post('/auth/redefinir-senha', {
+        'email': email,
+        'codigo': codigo,
+        'nova_senha': novaSenha,
+        'confirma_senha': confirmaSenha,
+      }, auth: false);
+      if (response.statusCode == 200) return {'sucesso': true};
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return {
+        'sucesso': false,
+        'mensagem': data['detail'] is String
+            ? data['detail']
+            : 'Erro ao redefinir senha.',
+      };
+    } catch (_) {
+      return {
+        'sucesso': false,
+        'mensagem': 'Não foi possível conectar ao servidor.',
+      };
+    }
+  }
+
   static Future<void> logout() async {
     await ApiService.clearToken();
   }

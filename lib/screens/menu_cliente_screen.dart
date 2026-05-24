@@ -20,6 +20,7 @@ class _MenuClienteScreenState extends State<MenuClienteScreen> {
 
   String _nome = '';
   String _email = '';
+  String? _fotoUrl;
 
   @override
   void initState() {
@@ -45,6 +46,12 @@ class _MenuClienteScreenState extends State<MenuClienteScreen> {
             data['username']?.toString()?.trim() ??
             '';
         _email = data['email']?.toString()?.trim() ?? '';
+        final rawFoto = data['foto_url']?.toString()?.trim();
+        _fotoUrl = rawFoto != null && rawFoto.isNotEmpty
+            ? (rawFoto.startsWith('http')
+                  ? rawFoto
+                  : 'http://127.0.0.1:8000$rawFoto')
+            : null;
       });
     }
   }
@@ -115,17 +122,45 @@ class _MenuClienteScreenState extends State<MenuClienteScreen> {
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 32,
-                            backgroundColor: const Color(0xFFE8F0E0),
-                            child: Text(
-                              _nome.isNotEmpty ? _nome[0].toUpperCase() : 'U',
-                              style: const TextStyle(
-                                color: verde,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                              ),
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFE8F0E0),
+                              shape: BoxShape.circle,
                             ),
+                            clipBehavior: Clip.antiAlias,
+                            child: _fotoUrl != null
+                                ? Image.network(
+                                    _fotoUrl!,
+                                    width: 64,
+                                    height: 64,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Center(
+                                      child: Text(
+                                        _nome.isNotEmpty
+                                            ? _nome[0].toUpperCase()
+                                            : 'U',
+                                        style: const TextStyle(
+                                          color: verde,
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Text(
+                                      _nome.isNotEmpty
+                                          ? _nome[0].toUpperCase()
+                                          : 'U',
+                                      style: const TextStyle(
+                                        color: verde,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
                           ),
                           const SizedBox(width: 16),
                           Column(

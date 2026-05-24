@@ -104,7 +104,11 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
     setState(() => _enviandoFoto = false);
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      setState(() => _fotoUrl = data['foto_url']?.toString() ?? _fotoUrl);
+      final novaFoto = ApiService.resolverFotoUrl(
+        data['foto_url']?.toString() ?? _fotoUrl,
+      );
+      setState(() => _fotoUrl = novaFoto);
+      if (novaFoto != null) await ApiService.saveFotoUrl(novaFoto);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Foto atualizada com sucesso!'),
@@ -170,23 +174,45 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
                           onTap: _enviandoFoto ? null : _escolherFoto,
                           child: Stack(
                             children: [
-                              CircleAvatar(
-                                radius: 44,
-                                backgroundColor: const Color(0xFFE8F0E0),
-                                backgroundImage: _fotoBytes != null
-                                    ? MemoryImage(_fotoBytes!) as ImageProvider
-                                    : (_fotoUrl != null && _fotoUrl!.isNotEmpty
-                                          ? NetworkImage(
-                                                  _fotoUrl!.startsWith('http')
-                                                      ? _fotoUrl!
-                                                      : 'http://127.0.0.1:8000$_fotoUrl',
-                                                )
-                                                as ImageProvider
-                                          : null),
-                                child:
-                                    (_fotoBytes == null &&
-                                        (_fotoUrl == null || _fotoUrl!.isEmpty))
-                                    ? Text(
+                              Builder(
+                                builder: (context) {
+                                  final url =
+                                      _fotoUrl != null && _fotoUrl!.isNotEmpty
+                                      ? (_fotoUrl!.startsWith('http')
+                                            ? _fotoUrl!
+                                            : 'http://127.0.0.1:8000$_fotoUrl')
+                                      : null;
+                                  Widget fotoWidget;
+                                  if (_fotoBytes != null) {
+                                    fotoWidget = Image.memory(
+                                      _fotoBytes!,
+                                      width: 88,
+                                      height: 88,
+                                      fit: BoxFit.cover,
+                                    );
+                                  } else if (url != null) {
+                                    fotoWidget = Image.network(
+                                      url,
+                                      width: 88,
+                                      height: 88,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Center(
+                                        child: Text(
+                                          _nomeController.text.isNotEmpty
+                                              ? _nomeController.text[0]
+                                                    .toUpperCase()
+                                              : 'U',
+                                          style: const TextStyle(
+                                            color: verde,
+                                            fontSize: 32,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    fotoWidget = Center(
+                                      child: Text(
                                         _nomeController.text.isNotEmpty
                                             ? _nomeController.text[0]
                                                   .toUpperCase()
@@ -196,8 +222,20 @@ class _MeusDadosScreenState extends State<MeusDadosScreen> {
                                           fontSize: 32,
                                           fontWeight: FontWeight.w700,
                                         ),
-                                      )
-                                    : null,
+                                      ),
+                                    );
+                                  }
+                                  return Container(
+                                    width: 88,
+                                    height: 88,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFE8F0E0),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: fotoWidget,
+                                  );
+                                },
                               ),
                               if (_enviandoFoto)
                                 Positioned.fill(

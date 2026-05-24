@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class DuvidasScreen extends StatefulWidget {
   const DuvidasScreen({super.key});
@@ -14,46 +16,94 @@ class _DuvidasScreenState extends State<DuvidasScreen>
 
   late final TabController _tabController;
 
-  final List<Map<String, String>> _pendentes = [
-    {
-      'produto': 'Camisa Linho Bege',
-      'pergunta': 'Esse tecido encolhe na lavagem?',
-      'data': '08/05/2026',
-    },
-    {
-      'produto': 'Calça Wide Leg Verde',
-      'pergunta': 'Tem disponível no tamanho 38?',
-      'data': '05/05/2026',
-    },
-  ];
-
-  final List<Map<String, String>> _respondidas = [
-    {
-      'produto': 'Vestido Midi Floral',
-      'pergunta': 'Qual o comprimento do vestido no tamanho M?',
-      'resposta':
-          'O comprimento no tamanho M é de 105 cm, medido do ombro até a barra. Qualquer dúvida, estamos à disposição!',
-      'data': '20/04/2026',
-    },
-    {
-      'produto': 'Blusa Tricô Off-White',
-      'pergunta': 'A blusa é transparente?',
-      'resposta':
-          'Olá! A blusa possui uma trama mais fechada, portanto não é transparente. Fica ótima com ou sem camiseta por baixo.',
-      'data': '12/04/2026',
-    },
-  ];
+  List<Map<String, dynamic>> _pendentes = [];
+  List<Map<String, dynamic>> _respondidas = [];
+  bool _carregando = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _carregarDuvidas();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _carregarDuvidas() async {
+    final response = await ApiService.get('/duvidas');
+    if (!mounted) return;
+    if (response.statusCode == 200) {
+      final lista = (jsonDecode(response.body) as List)
+          .cast<Map<String, dynamic>>();
+      setState(() {
+        _pendentes = lista.where((d) => d['status'] == 'pendente').toList();
+        _respondidas = lista.where((d) => d['status'] == 'respondida').toList();
+        _carregando = false;
+      });
+    } else {
+      setState(() => _carregando = false);
+    }
+  }
+
+  Future<void> _excluirDuvida(int id) async {
+    final confirma = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: const Text(
+          'Excluir dúvida',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        content: const Text('Deseja excluir esta pergunta?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.black54),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+    if (confirma != true) return;
+    final response = await ApiService.delete('/duvidas/$id');
+    if (!mounted) return;
+    if (response.statusCode == 204) {
+      _carregarDuvidas();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Não foi possível excluir a dúvida.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  String _formatarData(String? iso) {
+    if (iso == null) return '';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return '';
+    }
   }
 
   @override
@@ -146,19 +196,48 @@ class _DuvidasScreenState extends State<DuvidasScreen>
                       ],
                     ),
                   ),
-                  const Tab(text: 'Respondidas'),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Respondidas'),
+                        const SizedBox(width: 6),
+                        if (_respondidas.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: verde,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${_respondidas.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
 
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildLista(_pendentes, respondida: false),
-                  _buildLista(_respondidas, respondida: true),
-                ],
-              ),
+              child: _carregando
+                  ? const Center(child: CircularProgressIndicator(color: verde))
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildLista(_pendentes, respondida: false),
+                        _buildLista(_respondidas, respondida: true),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -167,133 +246,168 @@ class _DuvidasScreenState extends State<DuvidasScreen>
   }
 
   Widget _buildLista(
-    List<Map<String, String>> lista, {
+    List<Map<String, dynamic>> lista, {
     required bool respondida,
   }) {
     if (lista.isEmpty) {
       return Center(
-        child: Text(
-          respondida
-              ? 'Nenhuma dúvida respondida.'
-              : 'Nenhuma dúvida pendente.',
-          style: const TextStyle(color: Colors.black45, fontSize: 15),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              respondida ? Icons.check_circle_outline : Icons.help_outline,
+              size: 52,
+              color: Colors.black12,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              respondida
+                  ? 'Nenhuma dúvida respondida.'
+                  : 'Nenhuma dúvida pendente.',
+              style: const TextStyle(color: Colors.black45, fontSize: 15),
+            ),
+          ],
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: lista.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, i) {
-        final item = lista[i];
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      item['produto'] ?? '',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: verde,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    item['data'] ?? '',
-                    style: const TextStyle(fontSize: 11, color: Colors.black38),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.help_outline,
-                    size: 16,
-                    color: Colors.black38,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      item['pergunta'] ?? '',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (respondida && (item['resposta'] ?? '').isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2E8),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.storefront_outlined,
-                        size: 16,
-                        color: verde,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          item['resposta'] ?? '',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+    return RefreshIndicator(
+      color: verde,
+      onRefresh: _carregarDuvidas,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: lista.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (context, i) {
+          final item = lista[i];
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
               ],
-              if (!respondida) ...[
-                const SizedBox(height: 8),
-                const Row(
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(Icons.access_time, size: 13, color: Colors.orange),
-                    SizedBox(width: 4),
-                    Text(
-                      'Aguardando resposta',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.orange,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        item['produto_nome']?.toString() ?? 'Produto',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: verde,
+                        ),
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _formatarData(item['criado_em']?.toString()),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.black38,
+                          ),
+                        ),
+                        if (!respondida) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => _excluirDuvida(item['id'] as int),
+                            child: const Icon(
+                              Icons.delete_outline,
+                              size: 18,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.help_outline,
+                      size: 16,
+                      color: Colors.black38,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        item['pergunta']?.toString() ?? '',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
                   ],
                 ),
+                if (respondida &&
+                    (item['resposta']?.toString() ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEF2E8),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.storefront_outlined,
+                          size: 16,
+                          color: verde,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            item['resposta']?.toString() ?? '',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (!respondida) ...[
+                  const SizedBox(height: 8),
+                  const Row(
+                    children: [
+                      Icon(Icons.access_time, size: 13, color: Colors.orange),
+                      SizedBox(width: 4),
+                      Text(
+                        'Aguardando resposta',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
-            ],
-          ),
-        );
-      },
+            ),
+          );
+        },
+      ),
     );
   }
 }

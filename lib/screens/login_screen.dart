@@ -207,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     GestureDetector(
                       onTap: () {
-                        // recuperar senha
+                        Navigator.of(context).pushNamed('/recuperar-senha');
                       },
                       child: Text(
                         "Esqueceu sua senha?",

@@ -7,6 +7,7 @@ import 'screens/carrinho_screen.dart';
 import 'screens/checkout_screen.dart';
 import 'screens/menu_cliente_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/recuperar_senha_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -46,6 +47,7 @@ class MyApp extends StatelessWidget {
         '/carrinho': (_) => const CarrinhoScreen(),
         '/checkout': (_) => const CheckoutScreen(),
         '/menu': (_) => const MenuClienteScreen(),
+        '/recuperar-senha': (_) => const RecuperarSenhaScreen(),
       },
     );
   }

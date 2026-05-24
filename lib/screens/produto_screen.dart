@@ -44,6 +44,123 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
     }
   }
 
+  Future<void> _enviarDuvida(String pergunta) async {
+    final response = await ApiService.post('/duvidas', {
+      'produto_id': int.tryParse(widget.produto['id'] ?? ''),
+      'produto_nome': widget.produto['nome'],
+      'pergunta': pergunta,
+    });
+    if (!mounted) return;
+    if (response.statusCode == 201) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Dúvida enviada! Responderemos em breve.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erro ao enviar dúvida. Tente novamente.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  Future<void> _abrirDialogDuvida(BuildContext context) async {
+    if (!await _exigirLogin(context)) return;
+    if (!context.mounted) return;
+    final controller = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Tire sua dúvida',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.produto['nome'] ?? '',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF627348),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 4,
+              maxLength: 500,
+              decoration: InputDecoration(
+                hintText: 'Digite sua pergunta sobre o produto...',
+                hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFFDDD8CC)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF627348),
+                    width: 1.5,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF627348),
+                    side: const BorderSide(color: Color(0xFF627348)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Cancelar'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    final texto = controller.text.trim();
+                    if (texto.isEmpty) return;
+                    Navigator.of(ctx).pop();
+                    _enviarDuvida(texto);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF627348),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Enviar'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+  }
+
   Future<bool> _exigirLogin(BuildContext context) async {
     if (_nomeUsuario != null) return true;
     await showDialog(
@@ -66,12 +183,16 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
             child: ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/login', (_) => false);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF627348),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Fazer login'),
             ),
@@ -82,12 +203,16 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
             child: OutlinedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).pushNamedAndRemoveUntil('/cadastro', (_) => false);
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/cadastro', (_) => false);
               },
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF627348),
                 side: const BorderSide(color: Color(0xFF627348)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Criar conta'),
             ),
@@ -695,8 +820,7 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                                 if (!await _exigirLogin(context)) return;
                                 if (!context.mounted) return;
                                 if (_tamanhoSelecionado == null) {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(
+                                  ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
                                         'Selecione o tamanho antes de continuar.',
@@ -775,6 +899,32 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                                   color: verde,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Botão dúvida
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: TextButton.icon(
+                              onPressed: () => _abrirDialogDuvida(context),
+                              icon: const Icon(
+                                Icons.help_outline,
+                                color: verde,
+                                size: 20,
+                              ),
+                              label: const Text(
+                                'Tire sua dúvida sobre o produto',
+                                style: TextStyle(
+                                  color: verde,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: verde,
                                 ),
                               ),
                             ),
