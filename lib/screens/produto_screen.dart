@@ -886,6 +886,28 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                             child: OutlinedButton(
                               onPressed: () async {
                                 if (!await _exigirLogin(context)) return;
+                                if (!context.mounted) return;
+                                if (_tamanhoSelecionado == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Selecione o tamanho antes de continuar.',
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                CarrinhoService.instancia.adicionar(
+                                  CarrinhoItem(
+                                    produto: produto,
+                                    tamanho: _tamanhoSelecionado,
+                                    quantidade: _quantidade,
+                                  ),
+                                );
+                                if (!context.mounted) return;
+                                Navigator.of(context).pushNamed('/checkout');
                               },
                               style: OutlinedButton.styleFrom(
                                 side: const BorderSide(color: verde, width: 2),

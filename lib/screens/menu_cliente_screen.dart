@@ -6,6 +6,7 @@ import 'meus_pedidos_screen.dart';
 import 'meus_enderecos_screen.dart';
 import 'duvidas_screen.dart';
 import 'cupons_screen.dart';
+import 'formas_pagamento_screen.dart';
 
 class MenuClienteScreen extends StatefulWidget {
   const MenuClienteScreen({super.key});
@@ -21,39 +22,80 @@ class _MenuClienteScreenState extends State<MenuClienteScreen> {
   String _nome = '';
   String _email = '';
   String? _fotoUrl;
+  int _duvidasPendentes = 0;
 
   @override
   void initState() {
     super.initState();
+    _carregarDoCache();
     _carregarPerfil();
+    _carregarDuvidasPendentes();
+  }
+
+  /// Exibe instantaneamente os dados já salvos no dispositivo.
+  Future<void> _carregarDoCache() async {
+    final nome = await ApiService.getNome();
+    final email = await ApiService.getEmail();
+    final foto = await ApiService.getFotoUrl();
+    if (!mounted) return;
+    setState(() {
+      if (nome != null && nome.isNotEmpty) _nome = nome;
+      if (email != null && email.isNotEmpty) _email = email;
+      if (foto != null && foto.isNotEmpty) _fotoUrl = foto;
+    });
   }
 
   Future<void> _carregarPerfil() async {
-    final response = await ApiService.get('/usuario/perfil');
-    if (!mounted) return;
-    if (response.statusCode == 200) {
-      final raw = jsonDecode(response.body);
-      final data =
-          (raw is Map<String, dynamic> &&
-              raw.containsKey('usuario') &&
-              raw['usuario'] is Map<String, dynamic>)
-          ? raw['usuario'] as Map<String, dynamic>
-          : raw as Map<String, dynamic>;
-      setState(() {
-        _nome =
+    try {
+      final response = await ApiService.get('/usuario/perfil');
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final raw = jsonDecode(response.body);
+        final data =
+            (raw is Map<String, dynamic> &&
+                raw.containsKey('usuario') &&
+                raw['usuario'] is Map<String, dynamic>)
+            ? raw['usuario'] as Map<String, dynamic>
+            : raw as Map<String, dynamic>;
+        final nome =
             data['nome_completo']?.toString()?.trim() ??
-            data['nome']?.toString()?.trim() ??
             data['username']?.toString()?.trim() ??
             '';
-        _email = data['email']?.toString()?.trim() ?? '';
+        final email = data['email']?.toString()?.trim() ?? '';
         final rawFoto = data['foto_url']?.toString()?.trim();
-        _fotoUrl = rawFoto != null && rawFoto.isNotEmpty
+        final foto = rawFoto != null && rawFoto.isNotEmpty
             ? (rawFoto.startsWith('http')
                   ? rawFoto
                   : 'http://127.0.0.1:8000$rawFoto')
             : null;
-      });
+        // Atualiza cache
+        if (nome.isNotEmpty) await ApiService.saveNome(nome);
+        if (email.isNotEmpty) await ApiService.saveEmail(email);
+        if (foto != null) await ApiService.saveFotoUrl(foto);
+        if (!mounted) return;
+        setState(() {
+          if (nome.isNotEmpty) _nome = nome;
+          if (email.isNotEmpty) _email = email;
+          _fotoUrl = foto;
+        });
+      }
+    } catch (_) {
+      // Backend offline — dados do cache já estão visíveis
     }
+  }
+
+  Future<void> _carregarDuvidasPendentes() async {
+    try {
+      final response = await ApiService.get(
+        '/duvidas',
+        queryParams: {'status_filtro': 'pendente'},
+      );
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() => _duvidasPendentes = data.length);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -176,9 +218,7 @@ class _MenuClienteScreenState extends State<MenuClienteScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                _email.isNotEmpty
-                                    ? _email
-                                    : 'usuario@email.com',
+                                _email.isNotEmpty ? _email : '',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: Colors.black45,
@@ -231,7 +271,7 @@ class _MenuClienteScreenState extends State<MenuClienteScreen> {
                       icon: Icons.help_outline,
                       title: 'Dúvidas',
                       subtitle: 'Perguntas pendentes e respondidas',
-                      badge: 2,
+                      badge: _duvidasPendentes > 0 ? _duvidasPendentes : null,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const DuvidasScreen(),
@@ -247,6 +287,17 @@ class _MenuClienteScreenState extends State<MenuClienteScreen> {
                         MaterialPageRoute(builder: (_) => const CuponsScreen()),
                       ),
                     ),
+                    _buildMenuTile(
+                      context,
+                      icon: Icons.payment_outlined,
+                      title: 'Formas de Pagamento',
+                      subtitle: 'PIX, cartão, boleto e preferências',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const FormasPagamentoScreen(),
+                        ),
+                      ),
+                    ),
 
                     const SizedBox(height: 16),
 
@@ -258,6 +309,7 @@ class _MenuClienteScreenState extends State<MenuClienteScreen> {
                         onPressed: () async {
                           await ApiService.clearToken();
                           await ApiService.clearNome();
+                          await ApiService.clearEmail();
                           if (!context.mounted) return;
                           Navigator.of(
                             context,

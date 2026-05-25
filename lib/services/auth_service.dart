@@ -24,6 +24,8 @@ class AuthService {
               login;
         }
         if (nome.isNotEmpty) await ApiService.saveNome(nome);
+        final email = usuario?['email']?.toString()?.trim() ?? '';
+        if (email.isNotEmpty) await ApiService.saveEmail(email);
         return {'sucesso': true, 'dados': data, 'usuario': data['usuario']};
       }
       final mensagem = data['detail'] is String

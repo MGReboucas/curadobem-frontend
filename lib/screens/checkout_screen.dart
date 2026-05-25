@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/forma_pagamento.dart';
 import '../services/api_service.dart';
 import '../services/carrinho_service.dart';
 import '../services/pedido_service.dart';
 import 'confirmacao_pedido_screen.dart';
+import 'pix_pagamento_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -19,6 +22,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   static const Color bege = Color(0xFFF3EBD6);
 
   final _formKey = GlobalKey<FormState>();
+
+  // Endereços salvos
+  List<Map<String, String>> _enderecosSalvos = [];
+  bool _carregandoEnderecos = true;
+  int? _enderecoSelecionadoIdx;
 
   // Endereço
   final _cepController = TextEditingController();
@@ -39,6 +47,74 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   bool _processando = false;
   bool _resumoAberto = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarEnderecos();
+    _carregarFormaPagamentoPreferida();
+  }
+
+  Future<void> _carregarFormaPagamentoPreferida() async {
+    final prefs = await SharedPreferences.getInstance();
+    final salva = prefs.getString('forma_pagamento_preferida');
+    if (salva == null || !mounted) return;
+    final forma = FormaPagamento.values
+        .where((f) => f.name == salva)
+        .firstOrNull;
+    if (forma != null) setState(() => _formaPagamento = forma);
+  }
+
+  Future<void> _carregarEnderecos() async {
+    final response = await ApiService.get('/usuario/enderecos');
+    if (!mounted) return;
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      setState(() {
+        _enderecosSalvos = data.map((e) {
+          final m = e as Map<String, dynamic>;
+          return {
+            'id': m['id']?.toString() ?? '',
+            'apelido': m['apelido']?.toString() ?? '',
+            'rua': m['rua']?.toString() ?? '',
+            'numero': m['numero']?.toString() ?? '',
+            'complemento': m['complemento']?.toString() ?? '',
+            'bairro': m['bairro']?.toString() ?? '',
+            'cidade': m['cidade']?.toString() ?? '',
+            'estado': m['estado']?.toString() ?? '',
+            'cep': m['cep']?.toString() ?? '',
+          };
+        }).toList();
+        _carregandoEnderecos = false;
+        if (_enderecosSalvos.isNotEmpty) _selecionarEndereco(0);
+      });
+    } else {
+      setState(() => _carregandoEnderecos = false);
+    }
+  }
+
+  void _selecionarEndereco(int index) {
+    final e = _enderecosSalvos[index];
+    setState(() => _enderecoSelecionadoIdx = index);
+    _cepController.text = e['cep'] ?? '';
+    _ruaController.text = e['rua'] ?? '';
+    _numeroController.text = e['numero'] ?? '';
+    _complementoController.text = e['complemento'] ?? '';
+    _bairroController.text = e['bairro'] ?? '';
+    _cidadeController.text = e['cidade'] ?? '';
+    _estadoController.text = e['estado'] ?? '';
+  }
+
+  void _limparEnderecoSelecionado() {
+    setState(() => _enderecoSelecionadoIdx = null);
+    _cepController.clear();
+    _ruaController.clear();
+    _numeroController.clear();
+    _complementoController.clear();
+    _bairroController.clear();
+    _cidadeController.clear();
+    _estadoController.clear();
+  }
 
   @override
   void dispose() {
@@ -108,6 +184,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       'estado': _estadoController.text,
     };
 
+    // 1. Cria o pedido no banco
     final resultado = await PedidoService.criarPedido(
       itens: CarrinhoService.instancia.itens.value,
       endereco: endereco,
@@ -115,9 +192,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     if (!mounted) return;
-    setState(() => _processando = false);
 
     if (resultado['sucesso'] != true) {
+      setState(() => _processando = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(resultado['mensagem'] ?? 'Erro ao finalizar pedido.'),
@@ -129,12 +206,94 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     final dados = resultado['dados'] as Map<String, dynamic>? ?? {};
     final numeroPedido =
-        dados['id']?.toString() ??
-        dados['numero']?.toString() ??
-        DateTime.now().millisecondsSinceEpoch.toString().substring(7);
+        dados['numero_pedido']?.toString() ?? dados['numero']?.toString() ?? '';
     final total = CarrinhoService.instancia.total;
-    CarrinhoService.instancia.limpar();
 
+    // 2. Inicia o pagamento no Mercado Pago
+    if (numeroPedido.isNotEmpty) {
+      await _iniciarPagamento(numeroPedido, total);
+    } else {
+      // Sem número de pedido: vai direto para confirmação
+      CarrinhoService.instancia.limpar();
+      if (!mounted) return;
+      setState(() => _processando = false);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => ConfirmacaoPedidoScreen(
+            numeroPedido: numeroPedido,
+            total: total,
+            formaPagamento: _formaPagamento!,
+          ),
+        ),
+        (route) => route.isFirst,
+      );
+    }
+  }
+
+  Future<void> _iniciarPagamento(String numeroPedido, double total) async {
+    try {
+      if (_formaPagamento == FormaPagamento.pix) {
+        // ── PIX: exibe QR Code ────────────────────────────────────────────
+        final response = await ApiService.post(
+          '/pagamentos/pix/$numeroPedido',
+          {},
+        );
+        if (!mounted) return;
+        setState(() => _processando = false);
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          CarrinhoService.instancia.limpar();
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => PixPagamentoScreen(
+                numeroPedido: numeroPedido,
+                total: total,
+                qrCode: data['qr_code']?.toString() ?? '',
+                qrCodeBase64: data['qr_code_base64']?.toString() ?? '',
+              ),
+            ),
+            (route) => route.isFirst,
+          );
+          return;
+        }
+        // MP não configurado ou erro → vai para confirmação
+        _irParaConfirmacao(numeroPedido, total);
+      } else {
+        // ── Cartão / Boleto: abre Checkout Pro do MP ──────────────────────
+        final response = await ApiService.post(
+          '/pagamentos/preferencia/$numeroPedido',
+          {},
+        );
+        if (!mounted) return;
+        setState(() => _processando = false);
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          // sandbox_init_point para testes, init_point para produção
+          final url = data['checkout_url']?.toString() ?? '';
+          CarrinhoService.instancia.limpar();
+          if (url.isNotEmpty) {
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          }
+          _irParaConfirmacao(numeroPedido, total);
+          return;
+        }
+        // MP não configurado ou erro → vai para confirmação
+        _irParaConfirmacao(numeroPedido, total);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _processando = false);
+      _irParaConfirmacao(numeroPedido, total);
+    }
+  }
+
+  void _irParaConfirmacao(String numeroPedido, double total) {
+    CarrinhoService.instancia.limpar();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => ConfirmacaoPedidoScreen(
@@ -303,6 +462,161 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         children: [
           _buildSectionTitle('Endereço de entrega', Icons.location_on_outlined),
           const SizedBox(height: 14),
+          if (_carregandoEnderecos)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: verde,
+                  ),
+                ),
+              ),
+            )
+          else if (_enderecosSalvos.isNotEmpty) ...[
+            const Text(
+              'Endereços salvos',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.black45,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...List.generate(_enderecosSalvos.length, (i) {
+              final e = _enderecosSalvos[i];
+              final selected = _enderecoSelecionadoIdx == i;
+              return GestureDetector(
+                onTap: () => _selecionarEndereco(i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected ? const Color(0xFFF0F7EC) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: selected ? verde : const Color(0xFFDDD8CC),
+                      width: selected ? 1.8 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        color: selected ? verde : Colors.black45,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if ((e['apelido'] ?? '').isNotEmpty)
+                              Text(
+                                e['apelido']!,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: selected ? verde : Colors.black87,
+                                ),
+                              ),
+                            Text(
+                              '${e['rua']}, ${e['numero']}${(e['complemento'] ?? '').isNotEmpty ? ' - ${e['complemento']}' : ''}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${e['bairro']} · ${e['cidade']}/${e['estado']}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.black38,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        selected
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
+                        color: selected ? verde : Colors.black26,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            GestureDetector(
+              onTap: _limparEnderecoSelecionado,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: _enderecoSelecionadoIdx == null
+                      ? const Color(0xFFF0F7EC)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _enderecoSelecionadoIdx == null
+                        ? verde
+                        : const Color(0xFFDDD8CC),
+                    width: _enderecoSelecionadoIdx == null ? 1.8 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.add_location_alt_outlined,
+                      color: _enderecoSelecionadoIdx == null
+                          ? verde
+                          : Colors.black45,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Usar outro endereço',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: _enderecoSelecionadoIdx == null
+                              ? verde
+                              : Colors.black54,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      _enderecoSelecionadoIdx == null
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      color: _enderecoSelecionadoIdx == null
+                          ? verde
+                          : Colors.black26,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFEEEBE3)),
+            const SizedBox(height: 14),
+          ],
 
           // CEP
           Row(

@@ -9,6 +9,7 @@ class ApiService {
   static const String _serverUrl = 'http://127.0.0.1:8000';
   static const String _tokenKey = 'auth_token';
   static const String _nomeKey = 'user_nome';
+  static const String _emailKey = 'user_email';
   static const String _fotoKey = 'user_foto';
 
   /// Converte caminho relativo (/uploads/...) em URL absoluta.
@@ -46,6 +47,21 @@ class ApiService {
   static Future<void> clearNome() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_nomeKey);
+  }
+
+  static Future<String?> getEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_emailKey);
+  }
+
+  static Future<void> saveEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_emailKey, email);
+  }
+
+  static Future<void> clearEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_emailKey);
   }
 
   static Future<String?> getFotoUrl() async {
