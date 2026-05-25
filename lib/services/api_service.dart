@@ -5,12 +5,18 @@ import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
-  static const String _serverUrl = 'http://127.0.0.1:8000';
+  // Override with: flutter run --dart-define=API_HOST=192.168.x.x
+  static const String _host = String.fromEnvironment(
+    'API_HOST',
+    defaultValue: '172.20.10.2',
+  );
+  static const String baseUrl = 'http://$_host:8000/api/v1';
+  static const String _serverUrl = 'http://$_host:8000';
   static const String _tokenKey = 'auth_token';
   static const String _nomeKey = 'user_nome';
   static const String _emailKey = 'user_email';
   static const String _fotoKey = 'user_foto';
+  static const Duration _timeout = Duration(seconds: 10);
 
   /// Converte caminho relativo (/uploads/...) em URL absoluta.
   static String? resolverFotoUrl(String? url) {
@@ -97,7 +103,7 @@ class ApiService {
     if (queryParams != null && queryParams.isNotEmpty) {
       uri = uri.replace(queryParameters: queryParams);
     }
-    return http.get(uri, headers: headers);
+    return http.get(uri, headers: headers).timeout(_timeout);
   }
 
   static Future<http.Response> post(
@@ -106,11 +112,13 @@ class ApiService {
     bool auth = true,
   }) async {
     final headers = await _headers(auth: auth);
-    return http.post(
-      Uri.parse('$baseUrl$path'),
-      headers: headers,
-      body: jsonEncode(body),
-    );
+    return http
+        .post(
+          Uri.parse('$baseUrl$path'),
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
   }
 
   static Future<http.Response> put(
@@ -118,16 +126,20 @@ class ApiService {
     Map<String, dynamic> body,
   ) async {
     final headers = await _headers();
-    return http.put(
-      Uri.parse('$baseUrl$path'),
-      headers: headers,
-      body: jsonEncode(body),
-    );
+    return http
+        .put(
+          Uri.parse('$baseUrl$path'),
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
   }
 
   static Future<http.Response> delete(String path) async {
     final headers = await _headers();
-    return http.delete(Uri.parse('$baseUrl$path'), headers: headers);
+    return http
+        .delete(Uri.parse('$baseUrl$path'), headers: headers)
+        .timeout(_timeout);
   }
 
   static Future<http.Response> uploadFoto(

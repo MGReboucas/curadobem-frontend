@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 
 class ProdutoService {
@@ -24,7 +25,9 @@ class ProdutoService {
           return data.cast<Map<String, dynamic>>();
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('ProdutoService.getProdutos error: $e');
+    }
     return [];
   }
 
@@ -35,7 +38,9 @@ class ProdutoService {
         final List<dynamic> data = jsonDecode(response.body);
         return data.cast<String>();
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('ProdutoService.getCategorias error: $e');
+    }
     return [];
   }
 
@@ -45,7 +50,9 @@ class ProdutoService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('ProdutoService.getProduto error: $e');
+    }
     return null;
   }
 }

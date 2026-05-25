@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../models/carrinho_item.dart';
 import '../models/forma_pagamento.dart';
 import 'api_service.dart';
@@ -35,7 +36,8 @@ class PedidoService {
           ? data['detail']
           : 'Erro ao criar pedido.';
       return {'sucesso': false, 'mensagem': mensagem};
-    } catch (_) {
+    } catch (e) {
+      debugPrint('PedidoService.criarPedido error: $e');
       return {
         'sucesso': false,
         'mensagem': 'Não foi possível conectar ao servidor.',
@@ -50,7 +52,9 @@ class PedidoService {
         final List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('PedidoService.getMeusPedidos error: $e');
+    }
     return [];
   }
 
@@ -60,7 +64,9 @@ class PedidoService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('PedidoService.getPedido error: $e');
+    }
     return null;
   }
 }
