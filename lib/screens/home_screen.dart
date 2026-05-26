@@ -64,12 +64,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ? raw['usuario'] as Map<String, dynamic>
           : raw as Map<String, dynamic>;
       final nome =
-          data['nome_completo']?.toString()?.trim() ??
-          data['nome']?.toString()?.trim() ??
-          data['username']?.toString()?.trim() ??
-          data['email']?.toString()?.trim();
+          data['nome_completo']?.toString().trim() ??
+          data['nome']?.toString().trim() ??
+          data['username']?.toString().trim() ??
+          data['email']?.toString().trim();
       final foto = ApiService.resolverFotoUrl(
-        data['foto_url']?.toString()?.trim(),
+        data['foto_url']?.toString().trim(),
       );
       if (nome != null && nome.isNotEmpty) await ApiService.saveNome(nome);
       if (foto != null && foto.isNotEmpty) await ApiService.saveFotoUrl(foto);
@@ -321,7 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           width: 32,
                                           height: 32,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => Center(
+                                          errorBuilder: (_, _, _) => Center(
                                             child: Text(
                                               _nomeUsuario!.trim().isNotEmpty
                                                   ? _nomeUsuario![0]
@@ -640,7 +640,7 @@ class _BannerCarouselState extends State<_BannerCarousel> {
                     _banners[index],
                     fit: BoxFit.cover,
                     width: double.infinity,
-                    errorBuilder: (_, __, ___) =>
+                    errorBuilder: (_, _, _) =>
                         Container(color: const Color(0xFFE8E0CC)),
                   ),
                 ),
@@ -763,23 +763,58 @@ class _CardProduto extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Imagem do produto (placeholder)
+            // Imagem do produto
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
-                child: Container(
-                  width: double.infinity,
-                  color: const Color(0xFFEEEEEE),
-                  child: const Center(
-                    child: Icon(
-                      Icons.image_outlined,
-                      color: Color(0xFFBBBBBB),
-                      size: 48,
+                child: () {
+                  final rawUrl = produto['imagem_url'] ?? '';
+                  final imageUrl = ApiService.resolverFotoUrl(
+                    rawUrl.isNotEmpty ? rawUrl : null,
+                  );
+                  if (imageUrl != null && imageUrl.isNotEmpty) {
+                    return Image.network(
+                      imageUrl,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (_, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          color: const Color(0xFFEEEEEE),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF627348),
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (_, _, _) => Container(
+                        color: const Color(0xFFEEEEEE),
+                        child: const Center(
+                          child: Icon(
+                            Icons.image_outlined,
+                            color: Color(0xFFBBBBBB),
+                            size: 48,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return Container(
+                    width: double.infinity,
+                    color: const Color(0xFFEEEEEE),
+                    child: const Center(
+                      child: Icon(
+                        Icons.image_outlined,
+                        color: Color(0xFFBBBBBB),
+                        size: 48,
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                }(),
               ),
             ),
 

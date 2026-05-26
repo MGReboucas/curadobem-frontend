@@ -509,18 +509,56 @@ class _ProdutoScreenState extends State<ProdutoScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Imagem do produto
-                    Container(
-                      width: double.infinity,
-                      height: 320,
-                      color: const Color(0xFFEEEEEE),
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_outlined,
-                          color: Color(0xFFBBBBBB),
-                          size: 80,
+                    () {
+                      final rawUrl = produto['imagem_url'] ?? '';
+                      final imageUrl = ApiService.resolverFotoUrl(
+                        rawUrl.isNotEmpty ? rawUrl : null,
+                      );
+                      if (imageUrl != null && imageUrl.isNotEmpty) {
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 320,
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (_, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                color: const Color(0xFFEEEEEE),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF627348),
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (_, _, _) => Container(
+                              color: const Color(0xFFEEEEEE),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.image_outlined,
+                                  color: Color(0xFFBBBBBB),
+                                  size: 80,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return Container(
+                        width: double.infinity,
+                        height: 320,
+                        color: const Color(0xFFEEEEEE),
+                        child: const Center(
+                          child: Icon(
+                            Icons.image_outlined,
+                            color: Color(0xFFBBBBBB),
+                            size: 80,
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    }(),
 
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),

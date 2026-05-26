@@ -5,13 +5,13 @@ import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Override with: flutter run --dart-define=API_HOST=192.168.x.x
-  static const String _host = String.fromEnvironment(
-    'API_HOST',
-    defaultValue: '172.20.10.2',
+  // Dev local:    flutter run
+  // Produção APK: flutter build apk --dart-define=API_URL=https://seu-app.onrender.com
+  static const String _serverUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'http://localhost:8000',
   );
-  static const String baseUrl = 'http://$_host:8000/api/v1';
-  static const String _serverUrl = 'http://$_host:8000';
+  static const String baseUrl = '$_serverUrl/api/v1';
   static const String _tokenKey = 'auth_token';
   static const String _nomeKey = 'user_nome';
   static const String _emailKey = 'user_email';
